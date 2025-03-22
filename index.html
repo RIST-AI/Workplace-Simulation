@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="RIST Interactive Assessment Tool">
+    <meta property="og:description" content="Virtual workplace simulation for WHS processes and staff supervision">
+    <meta property="og:image" content="https://res.cloudinary.com/dimqqmfx6/image/upload/v1742611850/u0322025017_RISTBrandmark-NavyCircle_jqexir.png">
+    <meta property="og:type" content="website">
+    <title>RIST Interactive Assessment Tool</title>
+    <link rel="icon" href="images/RIST Brandmark - Navy Circle.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Header -->
+    <header class="bg-rist-navy text-white p-4 shadow-md">
+        <div class="container mx-auto flex flex-col sm:flex-row justify-between items-center">
+            <div class="flex items-center space-x-4 mb-3 sm:mb-0">
+                <img src="images/RIST Brandmark - Navy Circle.png" alt="RIST Logo" class="h-12">
+                <h1 class="text-xl md:text-2xl font-bold">Interactive Assessment Tool</h1>
+            </div>
+            <div id="timer" class="hidden bg-white text-rist-navy px-4 py-2 rounded-lg font-bold">
+                <i class="fas fa-clock mr-2"></i><span id="time-display">02:00:00</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto p-4 md:p-6">
+        <!-- Welcome Screen -->
+        <div id="welcome-screen" class="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6">
+            <div class="flex flex-col md:flex-row items-center mb-6">
+                <img src="images/RIST - Primary Colour.jpg" alt="RIST Logo" class="h-24 md:h-32 mb-4 md:mb-0 md:mr-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-rist-navy mb-2">Workplace Supervision Assessment</h2>
+                    <p class="text-gray-700">This interactive assessment will test your ability to maintain WHS processes and supervise staff performance in a simulated agricultural workplace environment.</p>
+                </div>
+            </div>
+            
+            <div class="bg-gray-100 p-4 rounded-lg mb-6">
+                <h3 class="font-bold text-lg mb-2">Assessment Overview:</h3>
+                <ul class="list-disc pl-6 space-y-2">
+                    <li>You will be assigned the role of supervisor for a small agricultural team (4-5 people)</li>
+                    <li>The simulation will take place over 2 hours</li>
+                    <li>You will need to complete 4 main activities</li>
+                    <li>Your responses and decisions will be recorded for assessment</li>
+                </ul>
+            </div>
+            
+            <div class="bg-gray-100 p-4 rounded-lg mb-6">
+                <h3 class="font-bold text-lg mb-2">Simulation Activities:</h3>
+                <ol class="list-decimal pl-6 space-y-2">
+                    <li><strong>WHS Meeting:</strong> Plan and conduct a WHS consultation meeting</li>
+                    <li><strong>Hazard Identification:</strong> Identify hazards and complete risk assessments</li>
+                    <li><strong>Emergency Response:</strong> Respond to a simulated emergency</li>
+                    <li><strong>Staff Supervision:</strong> Create work plans and address performance issues</li>
+                </ol>
+            </div>
+            
+            <div class="flex justify-center">
+                <button id="start-btn" class="bg-rist-navy hover:bg-opacity-90 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-300 flex items-center">
+                    <i class="fas fa-play-circle mr-2"></i> Start Assessment
+                </button>
+            </div>
+        </div>
+
+        <!-- Assessment Container (Initially Hidden) -->
+        <div id="assessment-container" class="hidden">
+            <!-- Navigation -->
+            <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+                <div class="flex flex-wrap justify-between items-center">
+                    <div class="flex items-center mb-2 md:mb-0">
+                        <span class="font-bold text-rist-navy mr-2">Current Activity:</span>
+                        <span id="current-activity" class="bg-rist-navy text-white px-3 py-1 rounded-full">Introduction</span>
+                    </div>
+                    <div class="flex flex-wrap space-x-0 sm:space-x-2 mt-2 sm:mt-0">
+                        <button id="prev-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center mb-2 sm:mb-0 w-full sm:w-auto">
+                            <i class="fas fa-arrow-left mr-2"></i> Previous
+                        </button>
+                        <button id="next-btn" class="bg-rist-navy hover:bg-opacity-90 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-300 flex items-center w-full sm:w-auto">
+                            Next <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Progress Bar -->
+                <div class="mt-4">
+                    <div class="w-full bg-gray-200 rounded-full h-4">
+                        <div id="progress-bar" class="bg-rist-navy rounded-full h-4 transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                    <div class="flex justify-between mt-1 text-xs text-gray-600 overflow-x-auto pb-1">
+                        <span class="whitespace-nowrap px-1">Intro</span>
+                        <span class="whitespace-nowrap px-1">WHS Meeting</span>
+                        <span class="whitespace-nowrap px-1">Hazard ID</span>
+                        <span class="whitespace-nowrap px-1">Emergency</span>
+                        <span class="whitespace-nowrap px-1">Supervision</span>
+                        <span class="whitespace-nowrap px-1">Complete</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content Sections -->
+            <!-- Introduction Section -->
+            <div id="introduction" class="content-section bg-white rounded-lg shadow-md p-4 sm:p-6">
+                <h2 class="text-xl font-bold text-rist-navy mb-4">Your Role and Workplace</h2>
+                
+                <div class="bg-gray-100 p-4 rounded-lg mb-6">
+                    <h3 class="font-bold mb-2">Scenario Background:</h3>
+                    <p class="mb-4">You are the newly appointed supervisor at Green Valley Farm, a medium-sized agricultural operation in regional Victoria that specializes in crop production and has a small livestock component. You oversee a team of 5 workers with varying levels of experience.</p>
+                    
+                    <h3 class="font-bold mb-2">Your Team Members:</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                        <div class="bg-white p-3 rounded shadow-sm">
+                            <div class="font-bold">John - Field Worker</div>
+                            <div class="text-sm text-gray-600">5 years experience, reliable</div>
+                        </div>
+                        <div class="bg-white p-3 rounded shadow-sm">
+                            <div class="font-bold">Sarah - Equipment Operator</div>
+                            <div class="text-sm text-gray-600">3 years experience, detail-oriented</div>
+                        </div>
+                        <div class="bg-white p-3 rounded shadow-sm">
+                            <div class="font-bold">Miguel - General Hand</div>
+                            <div class="text-sm text-gray-600">New hire, 6 months experience</div>
+                        </div>
+                        <div class="bg-white p-3 rounded shadow-sm">
+                            <div class="font-bold">Aisha - Livestock Assistant</div>
+                            <div class="text-sm text-gray-600">2 years experience, good with animals</div>
+                        </div>
+                        <div class="bg-white p-3 rounded shadow-sm">
+                            <div class="font-bold">David - Seasonal Worker</div>
+                            <div class="text-sm text-gray-600">First season, limited experience</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-gray-100 p-4 rounded-lg mb-6">
+                    <h3 class="font-bold mb-2">Available Resources:</h3>
+                    <ul class="list-disc pl-6 space-y-2">
+                        <li>WHS Policy and Procedures Manual (compliant with Work Health and Safety Act 2011)</li>
+                        <li>Safe Work Method Statements (SWMS)</li>
+                        <li>Risk Assessment Templates</li>
+                        <li>Incident Report Forms</li>
+                        <li>Safety Data Sheets (SDS) for chemicals</li>
+                        <li>Emergency Response Plan</li>
+                        <li>Staff Performance Review Templates</li>
+                    </ul>
+                </div>
+                
+                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-exclamation-triangle text-yellow-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-yellow-800">Important Note</h3>
+                            <div class="text-sm text-yellow-700">
+                                <p>Throughout this assessment, you will need to make decisions and complete documentation. Your responses will be saved automatically for assessment purposes.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-center">
+                    <button id="intro-continue-btn" class="bg-rist-navy hover:bg-opacity-90 text-white font-bold py-2 px-6 rounded-lg transition-colors duration-300">
+                        I understand my role - Continue
+                    </button>
+                </div>
+            </div>
+
+            <!-- WHS Meeting Section -->
+            <div id="whs-meeting" class="content-section hidden bg-white rounded-lg shadow-md p-4 sm:p-6">
+                <h2 class="text-xl font-bold text-rist-navy mb-4">Activity 1: WHS Consultation Meeting</h2>
+                
+                <div class="bg-gray-100 p-4 rounded-lg mb-6">
+                    <h3 class="font-bold mb-2">Task Overview:</h3>
+                    <p>You need to plan and conduct a WHS consultation meeting with your team to address several workplace hazards that have been identified. You will need to:</p>
+                    <ul class="list-disc pl-6 space-y-1 mt-2">
+                        <li>Plan the meeting agenda</li>
+                        <li>Facilitate discussion on identified hazards</li>
+                        <li>Document meeting outcomes and action items</li>
+                    </ul>
+                </div>
+                
+                <div class="bg-white border border-gray-300 rounded-lg p-4 mb-6">
+                    <h3 class="font-bold mb-3">Recent Hazard Reports:</h3>
+                    <div class="space-y-3">
+                        <div class="p-3 bg-red-50 border border-red-200 rounded">
+                            <p class="font-semibold">Chemical Storage Area</p>
+                            <p class="text-sm text-gray-700">Several chemical containers found without proper labeling. Some containers appear to be leaking.</p>
+                        </div>
+                        <div class="p-3 bg-yellow-50 border border-yellow-200 rounded">
+                            <p class="font-semibold">Equipment Shed</p>
+                            <p class="text-sm text-gray-700">Tractor maintenance overdue. Workers reporting unusual noise from engine.</p>
+                        </div>
+                        <div class="p-3 bg-orange-50 border border-orange-200 rounded">
+                            <p class="font-semibold">Field Operations</p>
+                            <p class="text-sm text-gray-700">Workers not consistently using PPE during spraying operations.</p>
+                        </div>
+                        <div class="p-3 bg-blue-50 border border-blue-200 rounded">
+                            <p class="font-semibold">General Workplace</p>
+                            <p class="text-sm text-gray-700">First aid kits need restocking. Emergency contact information is outdated.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Meeting Planning Form -->
+                <div class="border border-gray-300 rounded-lg p-4 mb-6">
+                    <h3 class="font-bold mb-3">1. Meeting Planning</h3>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="meeting-objective">
+                            Meeting Objective:
+                        </label>
+                        <textarea id="meeting-objective" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" rows="2" placeholder="What is the main purpose of this meeting?"></textarea>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">
+                            Meeting Agenda Items:
+                        </label>
+                        <div class="space-y-2">
+                            <div class="flex items-center">
+                                <input type="checkbox" id="agenda-1" class="mr-2">
+                                <label for="agenda-1">Welcome and introduction</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="checkbox" id="agenda-2" class="mr-2">
+                                <label for="agenda-2">Review of previous safety incidents</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="checkbox" id="agenda-3" class="mr-2">
+                                <label for="agenda-3">Discussion of identified hazards</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="checkbox" id="agenda-4" class="mr-2">
+                                <label for="agenda-4">Brainstorming of control measures</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="checkbox" id="agenda-5" class="mr-2">
+                                <label for="agenda-5">Assignment of responsibilities</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="checkbox" id="agenda-6" class="mr-2">
+                                <label for="agenda-6">Review of emergency procedures</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="checkbox" id="agenda-7" class="mr-2">
+                                <label for="agenda-7">Open forum for team concerns</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="checkbox" id="agenda-8" class="mr-2">
+                                <label for="agenda-8">Next steps and meeting close</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="meeting-materials">
+                            Required Materials/Resources:
+                        </label>
+                        <textarea id="meeting-materials" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" rows="2" placeholder="What materials will you need for this meeting?"></textarea>
+                    </div>
+                </div>
+                
+                <!-- Meeting Simulation -->
+                <div class="border border-gray-300 rounded-lg p-4 mb-6">
+                    <h3 class="font-bold mb-3">2. Meeting Simulation</h3>
+                    <p class="mb-4">Now you will simulate conducting the WHS meeting. For each hazard, select how you would address it with your team:</p>
+                    
+                    <div class="space-y-6">
+                        <!-- Chemical Storage Hazard -->
+                        <div class="bg-gray-50 p-4 rounded">
+                            <h4 class="font-bold text-red-700 mb-2">Chemical Storage Area Hazard</h4>
+                            <p class="mb-3">How will you address this hazard with your team?</p>
+                            <select id="chemical-approach" class="w-full p-2 border rounded mb-3">
+                                <option value="">-- Select your approach --</option>
+                                <option value="directive">Tell the team exactly what needs to be done to fix the issue</option>
+                                <option value="collaborative">Ask the team for input on how to address the issue</option>
+                                <option value="delegative">Assign someone to take responsibility for resolving the issue</option>
+                                <option value="educational">Provide training on proper chemical handling and storage</option>
+                            </select>
+                            
+                            <div id="chemical-response" class="hidden mt-4 p-3 bg-gray-100 rounded">
+                                <p class="font-bold mb-1">Team Response:</p>
+                                <p class="team-feedback"></p>
+                            </div>
+                            
+                            <div class="mt-3">
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="chemical-action">
+                                    Action Items:
+                                </label>
+                                <textarea id="chemical-action" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" rows="2" placeholder="What specific actions need to be taken?"></textarea>
+                            </div>
+                        </div>
+                        
+                        <!-- Equipment Shed Hazard -->
+                        <div class="bg-gray-50 p-4 rounded">
+                            <h4 class="font-bold text-yellow-700 mb-2">Equipment Shed Hazard</h4>
+                            <p class="mb-3">How will you address this hazard with your team?</p>
+                            <select id="equipment-approach" class="w-full p-2 border rounded mb-3">
+                                <option value="">-- Select your approach --</option>
+                                <option value="directive">Tell the team exactly what needs to be done to fix the issue</option>
+                                <option value="collaborative">Ask the team for input on how to address the issue</option>
+                                <option value="delegative">Assign someone to take responsibility for resolving the issue</option>
+                                <option value="educational">Provide training on equipment maintenance and safety</option>
+                            </select>
+                            
+                            <div id="equipment-response" class="hidden mt-4 p-3 bg-gray-100 rounded">
+                                <p class="font-bold mb-1">Team Response:</p>
+                                <p class="team-feedback"></p>
+                            </div>
+                            
+                            <div class="mt-3">
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="equipment-action">
+                                    Action Items:
+                                </label>
+                                <textarea id="equipment-action" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" rows="2" placeholder="What specific actions need to be taken?"></textarea>
+                            </div>
+                        </div>
+                        
+                        <!-- PPE Hazard -->
+                        <div class="bg-gray-50 p-4 rounded">
+                            <h4 class="font-bold text-orange-700 mb-2">Field Operations PPE Hazard</h4>
+                            <p class="mb-3">How will you address this hazard with your team?</p>
+                            <select id="ppe-approach" class="w-full p-2 border rounded mb-3">
+                                <option value="">-- Select your approach --</option>
+                                <option value="directive">Tell the team exactly what needs to be done to fix the issue</option>
+                                <option value="collaborative">Ask the team for input on how to address the issue</option>
+                                <option value="delegative">Assign someone to take responsibility for resolving the issue</option>
+                                <option value="educational">Provide training on importance and proper use of PPE</option>
+                            </select>
+                            
+                            <div id="ppe-response" class="hidden mt-4 p-3 bg-gray-100 rounded">
+                                <p class="font-bold mb-1">Team Response:</p>
+                                <p class="team-feedback"></p>
+                            </div>
+                            
+                            <div class="mt-3">
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="ppe-action">
+                                    Action Items:
+                                </label>
+                                <textarea id="ppe-action" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" rows="2" placeholder="What specific actions need to be taken?"></textarea>
+                            </div>
+                        </div>
+                        
+                        <!-- First Aid Hazard -->
+                        <div class="bg-gray-50 p-4 rounded">
+                            <h4 class="font-bold text-blue-700 mb-2">First Aid and Emergency Contact Hazard</h4>
+                            <p class="mb-3">How will you address this hazard with your team?</p>
+                            <select id="firstaid-approach" class="w-full p-2 border rounded mb-3">
+                                <option value="">-- Select your approach --</option>
+                                <option value="directive">Tell the team exactly what needs to be done to fix the issue</option>
+                                <option value="collaborative">Ask the team for input on how to address the issue</option>
+                                <option value="delegative">Assign someone to take responsibility for resolving the issue</option>
+                                <option value="educational">Provide training on first aid procedures and emergency response</option>
+                            </select>
+                            
+                            <div id="firstaid-response" class="hidden mt-4 p-3 bg-gray-100 rounded">
+                                <p class="font-bold mb-1">Team Response:</p>
+                                <p class="team-feedback"></p>
+                            </div>
+                            
+                            <div class="mt-3">
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="firstaid-action">
+                                    Action Items:
+                                </label>
+                                <textarea id="firstaid-action" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" rows="2" placeholder="What specific actions need to be taken?"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Meeting Documentation -->
+                <div class="border border-gray-300 rounded-lg p-4 mb-6">
+                    <h3 class="font-bold mb-3">3. Meeting Documentation</h3>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="meeting-summary">
+                            Meeting Summary:
+                        </label>
+                        <textarea id="meeting-summary" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" rows="3" placeholder="Provide a summary of the key points discussed in the meeting"></textarea>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="meeting-followup">
+                            Follow-up Plan:
+                        </label>
+                        <textarea id="meeting-followup" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" rows="2" placeholder="How will you ensure action items are completed?"></textarea>
+                    </div>
+                </div>
+                
+                <div class="flex justify-center">
+                    <button id="whs-complete-btn" class="bg-rist-navy hover:bg-opacity-90 text-white font-bold py-2 px-6 rounded-lg transition-colors duration-300">
+                        Complete WHS Meeting Activity
+                    </button>
+                </div>
+            </div>
+
+            <!-- Hazard Identification Section -->
+            <div id="hazard-identification" class="content-section hidden bg-white rounded-lg shadow-md p-4 sm:p-6">
+                <h2 class="text-xl font-bold text-rist-navy mb-4">Activity 2: Hazard Identification and Risk Assessment</h2>
+                
+                <div class="bg-gray-100 p-4 rounded-lg mb-6">
+                    <h3 class="font-bold mb-2">Task Overview:</h3>
+                    <p>You need to conduct a workplace inspection to identify hazards, complete risk assessments, and recommend appropriate control measures according to the hierarchy of control as required by SafeWork Australia guidelines.</p>
+                </div>
+                
+                <!-- Virtual Workplace Inspection -->
+                <div class="border border-gray-300 rounded-lg p-4 mb-6">
+                    <h3 class="font-bold mb-3">1. Virtual Workplace Inspection</h3>
+                    <p class="mb-4">Click on different areas of the workplace to inspect them for hazards:</p>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                        <button id="inspect-chemical" class="inspection-btn bg-white hover:bg-gray-100 border border-gray-300 p-4 rounded-lg text-left transition-colors duration-300 flex items-center">
+                            <i class="fas fa-flask text-red-600 text-2xl mr-3"></i>
+                            <div>
+                                <div class="font-bold">Chemical Storage Area</div>
+                                <div class="text-sm text-gray-600">Inspect chemical storage and handling</div>
+                            </div>
+                        </button>
+                        
+                        <button id="inspect-equipment" class="inspection-btn bg-white hover:bg-gray-100 border border-gray-300 p-4 rounded-lg text-left transition-colors duration-300 flex items-center">
+                            <i class="fas fa-tools text-yellow-600 text-2xl mr-3"></i>
+                            <div>
+                                <div class="font-bold">Equipment Shed</div>
+                                <div class="text-sm text-gray-600">Inspect machinery and tools</div>
+                            </div>
+                        </button>
+                        
+                        <button id="inspect-field" class="inspection-btn bg-white hover:bg-gray-100 border border-gray-300 p-4 rounded-lg text-left transition-colors duration-300 flex items-center">
+                            <i class="fas fa-seedling text-green-600 text-2xl mr-3"></i>
+                            <div>
+                                <div class="font-bold">Field Operations</div>
+                                <div class="text-sm text-gray-600">Inspect outdoor work areas</div>
+                            </div>
+                        </button>
+                        
+                        <button id="inspect-livestock" class="inspection-btn bg-white hover:bg-gray-100 border border-gray-300 p-4 rounded-lg text-left transition-colors duration-300 flex items-center">
+                            <i class="fas fa-horse text-amber-800 text-2xl mr-3"></i>
+                            <div>
+                                <div class="font-bold">Livestock Area</div>
+                                <div class="text-sm text-gray-600">Inspect animal handling facilities</div>
+                            </div>
+                        </button>
+                    </div>
+                    
+                    <!-- Inspection Results (Initially Hidden) -->
+                    <div id="inspection-results" class="hidden mt-4 p-4 bg-gray-50 rounded-lg">
+                        <h4 class="font-bold mb-2">Inspection Results: <span id="inspection-area"></span></h4>
+                        <div id="hazards-found" class="space-y-2 mb-4"></div>
+                        
+                        <div class="mt-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">
+                                Did you identify any additional hazards?
+                            </label>
+                            <textarea id="additional-hazards" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" rows="2" placeholder="Describe any additional hazards you identified"></textarea>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Risk Assessment -->
+                <div class="border border-gray-300 rounded-lg p-4 mb-6">
+                    <h3 class="font-bold mb-3">2. Risk Assessment</h3>
+                    <p class="mb-4">Select a hazard to complete a risk assessment:</p>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="hazard-select">
+                            Select Hazard:
+                        </label>
+                        <select id="hazard-select" class="w-full p-2 border rounded">
+                            <option value="">-- Select a hazard --</option>
+                            <!-- Options will be populated dynamically -->
+                        </select>
+                    </div>
+                    
+                    <!-- Risk Assessment Form (Initially Hidden) -->
+                    <div id="risk-assessment-form" class="hidden mt-4">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="hazard-description">
+                                Hazard Description:
+                            </label>
+                            <textarea id="hazard-description" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" rows="2" readonly></textarea>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="likelihood">
+                                    Likelihood:
+                                </label>
+                                <select id="likelihood" class="w-full p-2 border rounded">
+                                    <option value="">-- Select likelihood --</option>
+                                    <option value="1">1 - Rare</option>
+                                    <option value="2">2 - Unlikely</option>
+                                    <option value="3">3 - Possible</option>
+                                    <option value="4">4 - Likely</option>
+                                    <option value="5">5 - Almost Certain</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="consequence">
+                                    Consequence:
+                                </label>
+                                <select id="consequence" class="w-full p-2 border rounded">
+                                    <option value="">-- Select consequence --</option>
+                                    <option value="1">1 - Insignificant</option>
+                                    <option value="2">2 - Minor</option>
+                                    <option value="3">3 - Moderate</option>
+                                    <option value="4">4 - Major</option>
+                                    <option value="5">5 - Catastrophic</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">
+                                Risk Rating:
+                            </label>
+                            <div id="risk-rating" class="p-3 font-bold text-center border rounded">
+                                Select likelihood and consequence to calculate
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="control-measures">
+                                Control Measures (according to Hierarchy of Control):
+                            </label>
+                            <div class="space-y-2 mb-2">
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="control-1" class="mr-2 control-measure">
+                                    <label for="control-1">Elimination - Remove the hazard completely</label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="control-2" class="mr-2 control-measure">
+                                    <label for="control-2">Substitution - Replace with something less hazardous</label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="control-3" class="mr-2 control-measure">
+                                    <label for="control-3">Engineering Controls - Isolate people from the hazard</label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="control-4" class="mr-2 control-measure">
+                                    <label for="control-4">Administrative Controls - Change work procedures</label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="control-5" class="mr-2 control-measure">
+                                    <label for="control-5">Personal Protective Equipment - Last line of defense</label>
+                                </div>
+                            </div>
+                            <textarea id="control-details" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" rows="2" placeholder="Provide specific details about your selected control measures"></textarea>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="responsible-person">
+                                Person Responsible:
+                            </label>
+                            <select id="responsible-person" class="w-full p-2 border rounded">
+                                <option value="">-- Select person --</option>
+                                <option value="You (Supervisor)">You (Supervisor)</option>
+                                <option value="John">John - Field Worker</option>
+                                <option value="Sarah">Sarah - Equipment Operator</option>
+                                <option value="Miguel">Miguel - General Hand</option>
+                                <option value="Aisha">Aisha - Livestock Assistant</option>
+                                <option value="David">David - Seasonal Worker</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="completion-date">
+                                Target Completion Date:
+                            </label>
+                            <input type="date" id="completion-date" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                        </div>
+                        
+                        <button id="save-assessment" class="bg-rist-navy hover:bg-opacity-90 text-white font-bold py-2 px-4 rounded transition-colors duration-300">
+                            Save Risk Assessment
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Completed Risk Assessments -->
+                <div class="border border-gray-300 rounded-lg p-4 mb-6">
+                    <h3 class="font-bold mb-3">3. Completed Risk Assessments</h3>
+                    <div id="completed-assessments" class="space-y-2">
+                        <p class="text-gray-600 italic">No risk assessments completed yet.</p>
+                    </div>
+                </div>
+                
+                <div class="flex justify-center">
+                    <button id="hazard-complete-btn" class="bg-rist-navy hover:bg-opacity-90 text-white font-bold py-2 px-6 rounded-lg transition-colors duration-300">
+                        Complete Hazard Identification Activity
+                    </button>
+                </div>
+            </div>
+
+            <!-- Emergency Response Section -->
+            <div id="emergency-response" class="content-section hidden bg-white rounded-lg shadow-md p-4 sm:p-6">
+                <h2 class="text-xl font-bold text-rist-navy mb-4">Activity 3: Emergency Response</h2>
+                
+                <div class="bg-gray-100 p-4 rounded-lg mb-6">
+                    <h3 class="font-bold mb-2">Task Overview:</h3>
+                    <p>You will need to respond to a simulated emergency situation, implement appropriate emergency procedures, and complete the required incident documentation.</p>
+                </div>
+                
+                <!-- Emergency Scenario -->
+                <div id="emergency-scenario" class="border border-gray-300 rounded-lg p-4 mb-6">
+                    <h3 class="font-bold mb-3">Emergency Scenario</h3>
+                    
+                    <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-exclamation-circle text-red-500"></i>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-lg font-medium text-red-800">EMERGENCY ALERT</h3>
+                                <div class="mt-2 text-red-700">
+                                    <p class="mb-2">It's 10:30 AM on a Tuesday. You receive an urgent call from Sarah who is working in the chemical storage area.</p>
+                                    <p class="mb-2">She reports that Miguel has accidentally knocked over several containers of pesticide while moving supplies. One container has broken and chemicals are spilling across the floor. Miguel has been splashed with the chemical and is complaining of burning on his arms and face.</p>
+                                    <p>Sarah sounds panicked and is asking what they should do.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <p class="font-bold mb-2">You need to respond to this emergency situation immediately.</p>
+                </div>
+                
+                <!-- Emergency Response Actions -->
+                <div class="border border-gray-300 rounded-lg p-4 mb-6">
+                    <h3 class="font-bold mb-3">1. Immediate Response</h3>
+                    <p class="mb-3">What are your immediate instructions to Sarah? (Select all that apply in the correct order)</p>
+                    
+                    <div class="space-y-2 mb-4">
+                        <div class="flex items-center">
+                            <input type="checkbox" id="response-1" class="mr-2 response-action">
+                            <label for="response-1">Tell Sarah to evacuate the area immediately and leave Miguel</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="response-2" class="mr-2 response-action">
+                            <label for="response-2">Instruct Sarah to help Miguel to the emergency shower/eyewash station</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="response-3" class="mr-2 response-action">
+                            <label for="response-3">Ask Sarah to find the Safety Data Sheet (SDS) for the spilled chemical</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="response-4" class="mr-2 response-action">
+                            <label for="response-4">Tell Sarah to attempt to clean up the spill immediately</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="response-5" class="mr-2 response-action">
+                            <label for="response-5">Instruct Sarah to call emergency services (000)</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="response-6" class="mr-2 response-action">
+                            <label for="response-6">Tell Sarah to cordon off the area to prevent others from entering</label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="additional-instructions">
+                            Additional Instructions:
+                        </label>
+                        <textarea id="additional-instructions" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" rows="2" placeholder="What other instructions would you give to Sarah?"></textarea>
+                    </div>
+                    
+                    <button id="respond-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition-colors duration-300">
+                        Submit Emergency Response
+                    </button>
+                </div>
+                
+                <!-- Emergency Response Feedback (Initially Hidden) -->
+                <div id="emergency-feedback" class="hidden border border-gray-300 rounded-lg p-4 mb-6">
+                    <h3 class="font-bold mb-3">Response Feedback</h3>
+                    <div id="response-feedback-content"></div>
+                </div>
+                
+                <!-- Follow-up Actions (Initially Hidden) -->
+                <div id="followup-actions" class="hidden border border-gray-300 rounded-lg p-4 mb-6">
+                    <h3 class="font-bold mb-3">2. Follow-up Actions</h3>
+                    <p class="mb-3">Now that the immediate emergency has been addressed, what follow-up actions will you take? (Select all that apply)</p>
+                    
+                    <div class="space-y-2 mb-4">
+                        <div class="flex items-center">
+                            <input type="checkbox" id="followup-1" class="mr-2 followup-action">
+                            <label for="followup-1">Arrange for professional cleaning of the chemical spill</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="followup-2" class="mr-2 followup-action">
+                            <label for="followup-2">Complete an incident report</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="followup-3" class="mr-2 followup-action">
+                            <label for="followup-3">Notify WorkSafe Victoria about the chemical spill</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="followup-4" class="mr-2 followup-action">
+                            <label for="followup-4">Review chemical handling procedures</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="followup-5" class="mr-2 followup-action">
+                            <label for="followup-5">Organize refresher training on chemical safety</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="followup-6" class="mr-2 followup-action">
+                            <label for="followup-6">Check if Miguel needs time off work and complete WorkCover paperwork</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Incident Documentation (Initially Hidden) -->
+                <div id="incident-documentation" class="hidden border border-gray-300 rounded-lg p-4 mb-6">
+                    <h3 class="font-bold mb-3">3. Incident Documentation</h3>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="incident-date">
+                            Date and Time of Incident:
+                        </label>
+                        <input type="datetime-local" id="incident-date" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="incident-location">
+                            Location of Incident:
+                        </label>
+                        <input type="text" id="incident-location" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Where did the incident occur?">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="incident-description">
+                            Description of Incident:
+                        </label>
+                        <textarea id="incident-description" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" rows="3" placeholder="Describe what happened in detail"></textarea>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="persons-involved">
+                            Persons Involved:
+                        </label>
+                        <input type="text" id="persons-involved" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="List all persons involved in the incident">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="injury-description">
+                            Description of Injuries/Damage:
+                        </label>
+                        <textarea id="injury-description" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" rows="2" placeholder="Describe any injuries or damage that occurred"></textarea>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="actions-taken">
+                            Immediate Actions Taken:
+                        </label>
+                        <textarea id="actions-taken" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" rows="2" placeholder="What immediate actions were taken to respond to the incident?"></textarea>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="root-cause">
+                            Root Cause Analysis:
+                        </label>
+                        <textarea id="root-cause" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" rows="2" placeholder="What do you believe caused this incident?"></textarea>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="preventive-measures">
+                            Preventive Measures:
+                        </label>
+                        <textarea id="preventive-measures" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" rows="2" placeholder="What measures will be implemented to prevent similar incidents?"></textarea>
+                    </div>
+                    
+                    <button id="submit-incident-report" class="bg-rist-navy hover:bg-opacity-90 text-white font-bold py-2 px-4 rounded transition-colors duration-300">
+                        Submit Incident Report
+                    </button>
+                </div>
+                
+                <div class="flex justify-center">
+                    <button id="emergency-complete-btn" class="hidden bg-rist-navy hover:bg-opacity-90 text-white font-bold py-2 px-6 rounded-lg transition-colors duration-300">
+                        Complete Emergency Response Activity
+                    </button>
+                </div>
+            </div>
+
+            <!-- Staff Supervision Section -->
+            <div id="staff-supervision" class="content-section hidden bg-white rounded-lg shadow-md p-4 sm:p-6">
+                <h2 class="text-xl font-bold text-rist-navy mb-4">Activity 4: Staff Supervision</h2>
+                
+                <div class="bg-gray-100 p-4 rounded-lg mb-6">
+                    <h3 class="font-bold mb-2">Task Overview:</h3>
+                    <p>You need to create a work plan for a specific task, provide instructions to team members, address a performance issue, and provide constructive feedback.</p>
+                </div>
+                
+                <!-- Work Plan Creation -->
+                <div class="border border-gray-300 rounded-lg p-4 mb-6">
+                    <h3 class="font-bold mb-3">1. Work Plan Creation</h3>
+                    
+                    <div class="bg-blue-50 p-4 rounded mb-4">
+                        <p class="mb-2"><strong>Task:</strong> Your team needs to prepare a field for planting wheat within the next three days. This involves clearing debris, tilling the soil, applying fertilizer, and setting up irrigation lines.</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="work-objectives">
+                            Work Objectives:
+                        </label>
+                        <textarea id="work-objectives" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" rows="2" placeholder="What are the main objectives of this task?"></textarea>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">
+                            Resource Allocation:
+                        </label>
+                        <p class="text-sm text-gray-600 mb-2">Assign team members to specific subtasks:</p>
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-gray-700 text-sm mb-1" for="clearing-assign">
+                                    Clearing Debris:
+                                </label>
+                                <select id="clearing-assign" class="w-full p-2 border rounded">
+                                    <option value="">-- Assign team member --</option>
+                                    <option value="John">John - Field Worker</option>
+                                    <option value="Sarah">Sarah - Equipment Operator</option>
+                                    <option value="Miguel">Miguel - General Hand</option>
+                                    <option value="Aisha">Aisha - Livestock Assistant</option>
+                                    <option value="David">David - Seasonal Worker</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-gray-700 text-sm mb-1" for="tilling-assign">
+                                    Tilling Soil:
+                                </label>
+                                <select id="tilling-assign" class="w-full p-2 border rounded">
+                                    <option value="">-- Assign team member --</option>
+                                    <option value="John">John - Field Worker</option>
+                                    <option value="Sarah">Sarah - Equipment Operator</option>
+                                    <option value="Miguel">Miguel - General Hand</option>
+                                    <option value="Aisha">Aisha - Livestock Assistant</option>
+                                    <option value="David">David - Seasonal Worker</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-gray-700 text-sm mb-1" for="fertilizer-assign">
+                                    Applying Fertilizer:
+                                </label>
+                                <select id="fertilizer-assign" class="w-full p-2 border rounded">
+                                    <option value="">-- Assign team member --</option>
+                                    <option value="John">John - Field Worker</option>
+                                    <option value="Sarah">Sarah - Equipment Operator</option>
+                                    <option value="Miguel">Miguel - General Hand</option>
+                                    <option value="Aisha">Aisha - Livestock Assistant</option>
+                                    <option value="David">David - Seasonal Worker</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-gray-700 text-sm mb-1" for="irrigation-assign">
+                                    Setting up Irrigation:
+                                </label>
+                                <select id="irrigation-assign" class="w-full p-2 border rounded">
+                                    <option value="">-- Assign team member --</option>
+                                    <option value="John">John - Field Worker</option>
+                                    <option value="Sarah">Sarah - Equipment Operator</option>
+                                    <option value="Miguel">Miguel - General Hand</option>
+                                    <option value="Aisha">Aisha - Livestock Assistant</option>
+                                    <option value="David">David - Seasonal Worker</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="timeline">
+                            Timeline:
+                        </label>
+                        <textarea id="timeline" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" rows="2" placeholder="Outline the timeline for completing this task"></textarea>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="safety-considerations">
+                            Safety Considerations:
+                        </label>
+                        <textarea id="safety-considerations" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" rows="2" placeholder="What safety considerations need to be addressed?"></textarea>
+                    </div>
+                </div>
+                
+                <!-- Team Instructions -->
+                <div class="border border-gray-300 rounded-lg p-4 mb-6">
+                    <h3 class="font-bold mb-3">2. Team Instructions</h3>
+                    <p class="mb-3">How will you communicate the work plan to your team? (Select one)</p>
+                    
+                    <div class="space-y-2 mb-4">
+                        <div class="flex items-center">
+                            <input type="radio" name="communication-method" id="comm-1" value="group-meeting" class="mr-2">
+                            <label for="comm-1">Hold a group meeting to explain the plan to everyone at once</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="radio" name="communication-method" id="comm-2" value="individual" class="mr-2">
+                            <label for="comm-2">Meet with each team member individually to explain their tasks</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="radio" name="communication-method" id="comm-3" value="written" class="mr-2">
+                            <label for="comm-3">Provide written instructions only</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="radio" name="communication-method" id="comm-4" value="demonstration" class="mr-2">
+                            <label for="comm-4">Demonstrate the tasks and then have team members practice</label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="key-points">
+                            Key Points to Communicate:
+                        </label>
+                        <textarea id="key-points" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" rows="3" placeholder="What are the most important points you need to communicate to your team?"></textarea>
+                    </div>
+                </div>
+                
+                <!-- Performance Issue -->
+                <div class="border border-gray-300 rounded-lg p-4 mb-6">
+                    <h3 class="font-bold mb-3">3. Addressing a Performance Issue</h3>
+                    
+                    <div class="bg-yellow-50 p-4 rounded mb-4">
+                        <p class="mb-2"><strong>Scenario:</strong> You've noticed that David, the seasonal worker, has been arriving late to work for the past week. When he does arrive, he seems disengaged and his work quality has been declining. Other team members have started to complain about having to cover for him.</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">
+                            How will you address this issue? (Select one)
+                        </label>
+                        
+                        <div class="space-y-2">
+                            <div class="flex items-center">
+                                <input type="radio" name="performance-approach" id="perf-1" value="public" class="mr-2">
+                                <label for="perf-1">Address the issue publicly during a team meeting to set an example</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="radio" name="performance-approach" id="perf-2" value="private" class="mr-2">
+                                <label for="perf-2">Have a private conversation with David to understand the issue</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="radio" name="performance-approach" id="perf-3" value="written" class="mr-2">
+                                <label for="perf-3">Send David a written warning without discussion</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="radio" name="performance-approach" id="perf-4" value="ignore" class="mr-2">
+                                <label for="perf-4">Ignore the issue for now and hope it resolves itself</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="conversation-simulation" class="hidden mt-4">
+                        <h4 class="font-bold mb-2">Conversation with David</h4>
+                        
+                        <div class="bg-gray-100 p-3 rounded mb-3">
+                            <p class="italic">You: "David, I'd like to speak with you privately for a moment. I've noticed you've been arriving late recently and seem less engaged with your work. Is everything okay?"</p>
+                        </div>
+                        
+                        <div class="bg-gray-200 p-3 rounded mb-3">
+                            <p class="italic">David: "Sorry about that. I've been having some transportation issues since my car broke down last week. I've been taking the bus, but the schedule is unreliable. I didn't want to make excuses."</p>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">
+                                How do you respond? (Select one)
+                            </label>
+                            
+                            <div class="space-y-2">
+                                <div class="flex items-center">
+                                    <input type="radio" name="response-option" id="resp-1" value="strict" class="mr-2">
+                                    <label for="resp-1">"That's not acceptable. You should have planned better or informed me earlier."</label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input type="radio" name="response-option" id="resp-2" value="understanding" class="mr-2">
+                                    <label for="resp-2">"I understand transportation issues can be difficult. Let's discuss some possible solutions."</label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input type="radio" name="response-option" id="resp-3" value="dismissive" class="mr-2">
+                                    <label for="resp-3">"Everyone has problems. You still need to get here on time like everyone else."</label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input type="radio" name="response-option" id="resp-4" value="solution" class="mr-2">
+                                    <label for="resp-4">"Is there another team member who lives near you who might be able to give you a ride until your car is fixed?"</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Constructive Feedback -->
+                <div id="feedback-section" class="hidden border border-gray-300 rounded-lg p-4 mb-6">
+                    <h3 class="font-bold mb-3">4. Providing Constructive Feedback</h3>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="positive-feedback">
+                            Positive Feedback:
+                        </label>
+                        <textarea id="positive-feedback" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" rows="2" placeholder="What positive feedback would you give to David?"></textarea>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="improvement-feedback">
+                            Areas for Improvement:
+                        </label>
+                        <textarea id="improvement-feedback" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" rows="2" placeholder="What specific behaviors need improvement?"></textarea>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="action-plan">
+                            Action Plan:
+                        </label>
+                        <textarea id="action-plan" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" rows="2" placeholder="What specific actions should David take to improve?"></textarea>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="follow-up-plan">
+                            Follow-up Plan:
+                        </label>
+                        <textarea id="follow-up-plan" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" rows="2" placeholder="How and when will you follow up on this issue?"></textarea>
+                    </div>
+                </div>
+                
+                <div class="flex justify-center">
+                    <button id="supervision-complete-btn" class="bg-rist-navy hover:bg-opacity-90 text-white font-bold py-2 px-6 rounded-lg transition-colors duration-300">
+                        Complete Staff Supervision Activity
+                    </button>
+                </div>
+            </div>
+
+            <!-- Assessment Complete Section -->
+            <div id="assessment-complete" class="content-section hidden bg-white rounded-lg shadow-md p-4 sm:p-6">
+                <div class="text-center">
+                    <div class="inline-block p-4 rounded-full bg-green-100 mb-4">
+                        <i class="fas fa-check-circle text-green-600 text-5xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-rist-navy mb-4">Assessment Complete!</h2>
+                    <p class="text-lg mb-6">You have successfully completed all activities in the workplace simulation assessment.</p>
+                    
+                    <div class="bg-gray-100 p-4 rounded-lg mb-6 text-left">
+                        <h3 class="font-bold mb-2">Next Steps:</h3>
+                        <ol class="list-decimal pl-6 space-y-2">
+                            <li>Your responses have been recorded and will be reviewed by your assessor.</li>
+                            <li>You will receive feedback on your performance in each activity.</li>
+                            <li>If you have any questions about the assessment, please contact your instructor.</li>
+                        </ol>
+                    </div>
+                    
+                    <button id="download-results" class="bg-rist-navy hover:bg-opacity-90 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-300 flex items-center mx-auto">
+                        <i class="fas fa-download mr-2"></i> Download Assessment Results
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-rist-navy text-white p-4 mt-6">
+        <div class="container mx-auto text-center">
+            <p>&copy; 2025 Rural Industries Skill Training (RIST). All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

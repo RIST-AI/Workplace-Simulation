@@ -1,0 +1,126 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Aleo:wght@400;700&display=swap');
+
+:root {
+    --rist-navy: #1E3F61;
+    --rist-orange: #E78C3C;
+    --rist-taupe: #D8D2C0;
+    --rist-offwhite: #F4F2EF;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+}
+
+h1, h2, h3, h4 {
+    font-family: 'Aleo', serif;
+}
+
+.bg-rist-navy {
+    background-color: var(--rist-navy);
+}
+
+.text-rist-navy {
+    color: var(--rist-navy);
+}
+
+.border-rist-navy {
+    border-color: var(--rist-navy);
+}
+
+.bg-rist-orange {
+    background-color: var(--rist-orange);
+}
+
+.text-rist-orange {
+    color: var(--rist-orange);
+}
+
+.border-rist-orange {
+    border-color: var(--rist-orange);
+}
+
+.bg-rist-taupe {
+    background-color: var(--rist-taupe);
+}
+
+.bg-rist-offwhite {
+    background-color: var(--rist-offwhite);
+}
+
+/* Mobile optimizations */
+@media (max-width: 640px) {
+    .mobile-full {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .mobile-stack {
+        flex-direction: column;
+    }
+    
+    .mobile-text-sm {
+        font-size: 0.875rem;
+    }
+    
+    .mobile-p-2 {
+        padding: 0.5rem;
+    }
+}
+
+/* Accessibility improvements */
+button:focus, input:focus, select:focus, textarea:focus {
+    outline: 2px solid var(--rist-orange);
+    outline-offset: 2px;
+}
+
+/* Custom checkbox styling */
+input[type="checkbox"], input[type="radio"] {
+    width: 1.2em;
+    height: 1.2em;
+    cursor: pointer;
+}
+
+/* Responsive table styles */
+@media (max-width: 768px) {
+    .responsive-table {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+    }
+}
+
+/* Button hover effects */
+.btn-hover-effect:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Disabled button styles */
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Form element focus styles */
+.form-input:focus {
+    border-color: var(--rist-navy);
+    box-shadow: 0 0 0 3px rgba(30, 63, 97, 0.2);
+}
+
+/* Print styles for assessment results */
+@media print {
+    body {
+        background-color: white;
+        color: black;
+    }
+    
+    .no-print {
+        display: none;
+    }
+    
+    .container {
+        width: 100%;
+        max-width: none;
+    }
+}
