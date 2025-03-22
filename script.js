@@ -320,10 +320,19 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function startTimer() {
         timer.classList.remove('hidden');
+        
+        // Record the start time
+        const startTime = Date.now();
+        const endTime = startTime + (timeRemaining * 1000);
+        
         updateTimerDisplay();
         
         timerInterval = setInterval(function() {
-            timeRemaining--;
+            // Calculate remaining time based on current time and end time
+            const currentTime = Date.now();
+            const elapsedSeconds = Math.floor((currentTime - startTime) / 1000);
+            timeRemaining = Math.max(0, 7200 - elapsedSeconds);
+            
             updateTimerDisplay();
             
             if (timeRemaining <= 0) {
@@ -335,6 +344,39 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateProgress();
             }
         }, 1000);
+        
+        // Add a more reliable backup using Page Visibility API
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible') {
+                // When page becomes visible again, recalculate the time remaining
+                const currentTime = Date.now();
+                const elapsedSeconds = Math.floor((currentTime - startTime) / 1000);
+                timeRemaining = Math.max(0, 7200 - elapsedSeconds);
+                updateTimerDisplay();
+                
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    alert("Time's up! Your assessment will be submitted with your current progress.");
+                    // Force navigation to completion
+                    currentSection = "assessment-complete";
+                    updateView();
+                    updateProgress();
+                }
+            }
+        });
+    }
+    
+    function updateTimerDisplay() {
+        const hours = Math.floor(timeRemaining / 3600);
+        const minutes = Math.floor((timeRemaining % 3600) / 60);
+        const seconds = timeRemaining % 60;
+        
+        timeDisplay.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        
+        // Change color when time is running low
+        if (timeRemaining < 600) { // Less than 10 minutes
+            timeDisplay.classList.add('text-red-600');
+        }
     }
     
     function updateTimerDisplay() {
