@@ -940,3 +940,36 @@ document.addEventListener('DOMContentLoaded', function() {
     adjustButtonsForMobile();
     window.addEventListener('resize', adjustButtonsForMobile);
 });
+
+function improveDropdownDisplay() {
+    // Get all select elements
+    const selects = document.querySelectorAll('select');
+    
+    selects.forEach(select => {
+        // Add event listener to show full text when focused
+        select.addEventListener('mousedown', function(e) {
+            if (window.innerWidth > 768) {
+                // For desktop, we can use a wider dropdown
+                this.style.width = 'auto';
+                this.style.minWidth = '100%';
+            }
+        });
+        
+        // Reset width when dropdown is closed
+        select.addEventListener('change', function() {
+            this.style.width = '100%';
+        });
+        
+        select.addEventListener('blur', function() {
+            this.style.width = '100%';
+        });
+    });
+}
+
+// Call this function after the DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // ... existing code ...
+    
+    // Add this at the end
+    improveDropdownDisplay();
+});

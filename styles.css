@@ -48,6 +48,19 @@ h1, h2, h3, h4 {
     background-color: var(--rist-offwhite);
 }
 
+/* Fix for dropdown option text display */
+select {
+    width: 100%;
+    white-space: normal;
+}
+
+select option {
+    white-space: normal;
+    word-wrap: break-word;
+    padding: 8px;
+    line-height: 1.4;
+}
+
 /* Mobile optimizations */
 @media (max-width: 640px) {
     .mobile-full {
