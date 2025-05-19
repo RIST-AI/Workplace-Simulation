@@ -1,7 +1,119 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Global variables
+    /* This is a string that will be part of the reportHtml in JavaScript */
+    // Inside your DOMContentLoaded listener, where pdfStyles is defined:
+    const pdfStyles = `
+    <style>
+        body { /* This will be the body of the printWindow div */
+            font-family: Arial, Helvetica, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #ffffff; /* Crucial for html2canvas */
+            font-size: 10pt;
+        }
+        .pdf-wrapper {
+            width: 100%;
+            max-width: 780px;
+            margin: 0 auto;
+            padding: 20px;
+            padding-bottom: 60px; /* << INCREASE THIS VALUE (e.g., from 20px to 50px, 60px, or even more) */
+            box-sizing: border-box;
+        }
+        .pdf-main-header { /* ... */ }
+        .pdf-section { /* ... */ }
+        .pdf-section:last-of-type { /* ... */ }
+        .pdf-section-title { /* ... */ }
+        .pdf-subsection-title { /* ... */ }
+        /* Styles for .pdf-item, .pdf-table etc. can remain as they were before the Q&A block */
+        .pdf-item { /* General item, can still be used if not Q&A */
+            margin-bottom: 8px;
+        }
+        .pdf-item-label {
+            font-weight: bold;
+            color: #444444;
+            display: inline-block;
+            min-width: 150px;
+            vertical-align: top;
+        }
+        .pdf-item-value {
+            display: inline-block;
+            word-break: break-word;
+        }
+        .pdf-table { /* ... */ }
+        .pdf-table th, .pdf-table td { /* ... */ }
+        .pdf-table th { /* ... */ }
+        .pdf-table tr:nth-child(even) { /* ... */ }
+        .student-info-block { /* ... */ }
+        .activity-block { /* ... */ }
+        .pdf-footer-note { /* ... */ }
+
+        /* CORRECT Q&A STYLES TO KEEP (Flexbox version) */
+        .pdf-qa-block {
+            margin-top: 15px; /* <<< ADD THIS LINE (or adjust value as needed, e.g., 10px) */
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .pdf-question-text {
+            font-weight: bold;
+            color: #1E3F61;
+            margin-bottom: 8px; /* Increased space after question */
+            display: block;
+        }
+        .pdf-question-text::before {
+            content: "Question: ";
+            font-weight: bold;
+        }
+        .pdf-answer-wrapper {
+            display: flex; /* Use flexbox */
+            align-items: flex-start; /* Align items to the top */
+            margin-left: 15px; /* Keep the indent */
+        }
+        .pdf-answer-label {
+            font-weight: bold;
+            color: #333;
+            margin-right: 8px; /* Increased space after label */
+            flex-shrink: 0; /* Prevent label from shrinking */
+            padding-top: 4px; /* Align baseline of label with first line of answer text if answer has padding */
+        }
+        .pdf-answer-text {
+            background-color: #ffffff;
+            padding: 4px 6px;
+            border-radius: 3px;
+            border: 1px solid #eaeaea;
+            word-break: break-word;
+            flex-grow: 1; /* Allow answer text to take remaining space */
+        }
+        .pdf-answer-list { /* If you use lists for answers */
+            margin-left: 15px; /* This is relative to its parent, .pdf-answer-wrapper, which is already indented */
+            /* If .pdf-answer-wrapper has margin-left: 15px, and .pdf-answer-label is present,
+               you might want padding-left: 0; on the ul and let the label provide the initial indent.
+               Or, if the label is part of the list item, adjust accordingly.
+               The current setup with flex might make this margin-left: 15px on the list itself look like a double indent
+               if the label is also present.
+               Let's try margin-left: 0; and rely on the wrapper's indent.
+            */
+            margin-left: 0; /* Changed from 15px */
+            padding-left: 20px; /* This will be the indent from the "Student's Answers:" label */
+            list-style-type: disc;
+            margin-top: 5px;
+        }
+        .pdf-answer-list-item {
+            background-color: #ffffff;
+            padding: 3px 5px;
+            border-radius: 3px;
+            margin-bottom: 4px;
+            border: 1px solid #eaeaea;
+        }
+    </style>
+    `;
     let assessmentData = {
         studentName: "",
+        unitCode: "",
         startTime: null,
         endTime: null,
         activities: {
@@ -13,6 +125,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 completed: false,
                 data: {
                     inspections: {},
+                    identifiedHazards: {},
                     riskAssessments: []
                 }
             },
@@ -27,10 +140,80 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
     
-    let currentSection = "welcome-screen";
-    let timerInterval;
-    let timeRemaining = 7200; // 2 hours in seconds
-    
+    let currentSection = "student-info-section"; // CHANGED - start with student info
+    let studentInfoSubmitted = false; // ADDED - flag
+    // Place this somewhere accessible, e.g., near your other data objects like hazardData
+    const questionTexts = {
+        whsMeeting: {
+            objective: "Meeting Objective:",
+            agendaItems: "Meeting Agenda Items:",
+            materials: "Required Materials/Resources:",
+            chemicalHazardApproach: "Chemical Storage Area Hazard: How will you address this hazard with your team?",
+            chemicalHazardActionItems: "Chemical Storage Area Hazard: Action Items:",
+            equipmentHazardApproach: "Equipment Shed Hazard: How will you address this hazard with your team?",
+            equipmentHazardActionItems: "Equipment Shed Hazard: Action Items:",
+            ppeHazardApproach: "Field Operations PPE Hazard: How will you address this hazard with your team?",
+            ppeHazardActionItems: "Field Operations PPE Hazard: Action Items:",
+            firstaidHazardApproach: "First Aid and Emergency Contact Hazard: How will you address this hazard with your team?",
+            firstaidHazardActionItems: "First Aid and Emergency Contact Hazard: Action Items:",
+            summary: "Meeting Summary:",
+            followup: "Follow-up Plan:"
+        },
+        hazardIdentification: {
+            // For risk assessments, the "question" is implicit in the fields
+            // We can add a general intro or handle it within the loop
+        },
+        emergencyResponse: {
+            immediateResponseSelectedActions: "Immediate Response: What are your immediate instructions to Sarah? (Selected Actions)",
+            immediateResponseAdditionalInstructions: "Immediate Response: Additional Instructions:",
+            // For incident report, fields are self-explanatory
+        },
+        staffSupervision: {
+            workPlanObjectives: "Work Plan: Work Objectives:",
+            workPlanResourceAllocationClearing: "Work Plan Resource Allocation: Clearing Debris:",
+            workPlanResourceAllocationTilling: "Work Plan Resource Allocation: Tilling Soil:",
+            workPlanResourceAllocationFertilizer: "Work Plan Resource Allocation: Applying Fertilizer:",
+            workPlanResourceAllocationIrrigation: "Work Plan Resource Allocation: Setting up Irrigation:",
+            workPlanTimeline: "Work Plan: Timeline:",
+            workPlanSafetyConsiderations: "Work Plan: Safety Considerations:",
+            teamInstructionsCommunicationMethod: "Team Instructions: How will you communicate the work plan to your team?",
+            teamInstructionsKeyPoints: "Team Instructions: Key Points to Communicate:",
+            performanceIssueApproach: "Performance Issue: How will you address this issue?",
+            performanceIssueResponse: "Performance Issue (Conversation with David): How do you respond?",
+            feedbackPositive: "Constructive Feedback: Positive Feedback:",
+            feedbackImprovement: "Constructive Feedback: Areas for Improvement:",
+            feedbackActionPlan: "Constructive Feedback: Action Plan:",
+            feedbackFollowUp: "Constructive Feedback: Follow-up Plan:"
+        }
+        // Add more as needed for other parts of your assessment
+    };
+    function escapeHtml(unsafe) {
+        if (typeof unsafe !== 'string') {
+            // If it's not a string (e.g., null, undefined, number), return it as is or a placeholder
+            if (unsafe === null || typeof unsafe === 'undefined') return 'N/A';
+            return String(unsafe); // Convert numbers/booleans to string
+        }
+        return unsafe
+             .replace(/&/g, "&amp;")
+             .replace(/</g, "&lt;")
+             .replace(/>/g, "&gt;")
+             .replace(/"/g, "&quot;")
+             .replace(/'/g, "&#039;");
+    }
+
+    // Helper to get question text
+    function getQuestionText(section, key, subKey = null, subSubKey = null) {
+        if (subSubKey && questionTexts[section] && questionTexts[section][key] && questionTexts[section][key][subKey] && questionTexts[section][key][subKey][subSubKey]) {
+            return questionTexts[section][key][subKey][subSubKey];
+        }
+        if (subKey && questionTexts[section] && questionTexts[section][key] && questionTexts[section][key][subKey]) {
+            return questionTexts[section][key][subKey];
+        }
+        if (questionTexts[section] && questionTexts[section][key]) {
+            return questionTexts[section][key];
+        }
+        return ""; // Fallback if question text not found
+    }
     // Hazard data
     const hazardData = {
         chemical: [
@@ -100,11 +283,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // DOM elements
     const startBtn = document.getElementById('start-btn');
     const prevBtn = document.getElementById('prev-btn');
+    const studentNameInput = document.getElementById('student-name'); // ADDED
+    const unitCodeInput = document.getElementById('unit-code');       // ADDED
+    const submitStudentInfoBtn = document.getElementById('submit-student-info-btn'); // ADDED
     const nextBtn = document.getElementById('next-btn');
     const progressBar = document.getElementById('progress-bar');
     const currentActivity = document.getElementById('current-activity');
-    const timer = document.getElementById('timer');
-    const timeDisplay = document.getElementById('time-display');
     
     // Activity-specific buttons
     const introBtn = document.getElementById('intro-continue-btn');
@@ -116,6 +300,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Navigation order
     const sections = [
+        "student-info-section",
+        "welcome-screen",       // ADD "welcome-screen" HERE
         "introduction",
         "whs-meeting",
         "hazard-identification",
@@ -123,18 +309,53 @@ document.addEventListener('DOMContentLoaded', function() {
         "staff-supervision",
         "assessment-complete"
     ];
-    
+        
+    submitStudentInfoBtn.addEventListener('click', function() {
+        const name = studentNameInput.value.trim();
+        const unit = unitCodeInput.value.trim();
+
+        if (!name) {
+            alert('Please enter your Full Name.');
+            studentNameInput.focus();
+            return;
+        }
+        if (!unit) {
+            alert('Please enter the Unit Code.');
+            unitCodeInput.focus();
+            return;
+        }
+
+        assessmentData.studentName = name;
+        assessmentData.unitCode = unit;
+        studentInfoSubmitted = true;
+
+        // Hide student info, show welcome screen
+        document.getElementById('student-info-section').classList.add('hidden');
+        document.getElementById('welcome-screen').classList.remove('hidden');
+        currentSection = "welcome-screen";
+        updateProgress();
+        updateView(); // Call updateView to correctly set button states etc. for welcome screen
+    });
     // Start assessment
     startBtn.addEventListener('click', function() {
+        // This check is technically redundant if student info must be submitted first,
+        // but good for robustness.
+        if (!studentInfoSubmitted) {
+            alert("Please complete the student information section first.");
+            // Potentially navigate back to student-info if needed, or just block.
+            // For now, this alert should suffice as they can't reach welcome-screen without submitting.
+            return;
+        }
         document.getElementById('welcome-screen').classList.add('hidden');
         document.getElementById('assessment-container').classList.remove('hidden');
         document.getElementById('introduction').classList.remove('hidden');
         currentSection = "introduction";
         updateProgress();
-        startTimer();
-        
-        // Record start time
-        assessmentData.startTime = new Date().toISOString();
+        updateView();
+        // Record start time (actual assessment activities begin)
+        if (!assessmentData.startTime) { // Only set if not already set
+            assessmentData.startTime = new Date().toISOString();
+        }
     });
     
     // Navigation buttons
@@ -187,7 +408,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Record end time
         assessmentData.endTime = new Date().toISOString();
-        clearInterval(timerInterval);
     });
     
     downloadBtn.addEventListener('click', function() {
@@ -266,13 +486,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Functions
     function navigateToNext() {
-        if (currentSection === "welcome-screen") {
-            currentSection = "introduction";
-        } else {
-            const currentIndex = sections.indexOf(currentSection);
-            if (currentIndex < sections.length - 1) {
-                currentSection = sections[currentIndex + 1];
-            }
+        if (!studentInfoSubmitted && currentSection === "student-info-section") {
+            alert("Please submit your student information before proceeding.");
+            return;
+        }
+        const currentIndex = sections.indexOf(currentSection);
+        if (currentIndex < sections.length - 1) {
+            currentSection = sections[currentIndex + 1];
         }
         
         updateView();
@@ -281,11 +501,25 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function navigateToPrevious() {
         const currentIndex = sections.indexOf(currentSection);
+    
+        // The prevBtn should be disabled by updateView() if currentIndex is 0 or 1.
+        // This check is a safeguard.
         if (currentIndex > 0) {
-            currentSection = sections[currentIndex - 1];
+            // Determine the target section
+            const targetSection = sections[currentIndex - 1];
+    
+            // If studentInfoSubmitted is true, and we are trying to go back to student-info-section,
+            // the inputs on student-info-section will be disabled by updateView().
+            // No special alert is needed here as per the current structure,
+            // as updateView handles the state of the student info form.
+            // The prevBtn on 'welcome-screen' is already disabled, preventing direct navigation
+            // from 'welcome-screen' to 'student-info-section' via this button.
+    
+            currentSection = targetSection;
             updateView();
             updateProgress();
         }
+        // If currentIndex is 0, this function shouldn't be callable because prevBtn would be disabled.
     }
     
     function updateView() {
@@ -295,101 +529,73 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         // Show current section
-        document.getElementById(currentSection).classList.remove('hidden');
+        const currentSectionElement = document.getElementById(currentSection);
+        if (currentSectionElement) {
+            currentSectionElement.classList.remove('hidden');
+        } else {
+            console.error("Current section element not found:", currentSection);
+            return;
+        }
         
         // Update buttons
         const currentIndex = sections.indexOf(currentSection);
-        prevBtn.disabled = currentIndex === 0;
+        prevBtn.disabled = currentIndex === 0 || (currentIndex === 1 && sections[0] === "student-info-section");
         
+        if (studentInfoSubmitted && currentSection === "student-info-section") {
+            studentNameInput.disabled = true;
+            unitCodeInput.disabled = true;
+            submitStudentInfoBtn.disabled = true;
+            submitStudentInfoBtn.textContent = "Information Submitted";
+            submitStudentInfoBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        } else if (currentSection === "student-info-section") {
+            studentNameInput.disabled = false;
+            unitCodeInput.disabled = false;
+            submitStudentInfoBtn.disabled = false;
+            submitStudentInfoBtn.innerHTML = '<i class="fas fa-arrow-right mr-2"></i> Continue to Assessment';
+            submitStudentInfoBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
         if (currentIndex === sections.length - 1) {
             nextBtn.classList.add('hidden');
         } else {
             nextBtn.classList.remove('hidden');
         }
+        if (currentSection === "student-info-section" || currentSection === "welcome-screen") {
+            nextBtn.classList.add('hidden');
+        } else {
+            // For all other sections, the generic nextBtn is fine
+            // (unless it's the last section, handled above)
+            if (currentIndex < sections.length - 1) {
+                 nextBtn.classList.remove('hidden');
+            }
+        }
         
         // Update current activity label
-        let activityLabel = currentSection.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        let activityLabel = "";
+        if (currentSection === "student-info-section") {
+            activityLabel = "Student Information";
+        } else if (currentSection === "welcome-screen") {
+            activityLabel = "Welcome";
+        } else {
+            activityLabel = currentSection.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        }
         currentActivity.textContent = activityLabel;
+        if (currentSection === "hazard-identification") {
+            updateHazardSelect();
+        }
+        // Show/hide assessment container vs student info
+        if (currentSection === "student-info-section") {
+            document.getElementById('assessment-container').classList.add('hidden');
+        } else if (currentSection !== "welcome-screen") { // welcome-screen is handled by its own button
+            document.getElementById('assessment-container').classList.remove('hidden');
+        }
     }
+    
     
     function updateProgress() {
         const currentIndex = sections.indexOf(currentSection);
         const progressPercentage = (currentIndex / (sections.length - 1)) * 100;
         progressBar.style.width = `${progressPercentage}%`;
-    }
-    
-    function startTimer() {
-        timer.classList.remove('hidden');
-        
-        // Record the start time
-        const startTime = Date.now();
-        const endTime = startTime + (timeRemaining * 1000);
-        
-        updateTimerDisplay();
-        
-        timerInterval = setInterval(function() {
-            // Calculate remaining time based on current time and end time
-            const currentTime = Date.now();
-            const elapsedSeconds = Math.floor((currentTime - startTime) / 1000);
-            timeRemaining = Math.max(0, 7200 - elapsedSeconds);
-            
-            updateTimerDisplay();
-            
-            if (timeRemaining <= 0) {
-                clearInterval(timerInterval);
-                alert("Time's up! Your assessment will be submitted with your current progress.");
-                // Force navigation to completion
-                currentSection = "assessment-complete";
-                updateView();
-                updateProgress();
-            }
-        }, 1000);
-        
-        // Add a more reliable backup using Page Visibility API
-        document.addEventListener('visibilitychange', function() {
-            if (document.visibilityState === 'visible') {
-                // When page becomes visible again, recalculate the time remaining
-                const currentTime = Date.now();
-                const elapsedSeconds = Math.floor((currentTime - startTime) / 1000);
-                timeRemaining = Math.max(0, 7200 - elapsedSeconds);
-                updateTimerDisplay();
-                
-                if (timeRemaining <= 0) {
-                    clearInterval(timerInterval);
-                    alert("Time's up! Your assessment will be submitted with your current progress.");
-                    // Force navigation to completion
-                    currentSection = "assessment-complete";
-                    updateView();
-                    updateProgress();
-                }
-            }
-        });
-    }
-    
-    function updateTimerDisplay() {
-        const hours = Math.floor(timeRemaining / 3600);
-        const minutes = Math.floor((timeRemaining % 3600) / 60);
-        const seconds = timeRemaining % 60;
-        
-        timeDisplay.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        
-        // Change color when time is running low
-        if (timeRemaining < 600) { // Less than 10 minutes
-            timeDisplay.classList.add('text-red-600');
-        }
-    }
-    
-    function updateTimerDisplay() {
-        const hours = Math.floor(timeRemaining / 3600);
-        const minutes = Math.floor((timeRemaining % 3600) / 60);
-        const seconds = timeRemaining % 60;
-        
-        timeDisplay.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        
-        // Change color when time is running low
-        if (timeRemaining < 600) { // Less than 10 minutes
-            timeDisplay.classList.add('text-red-600');
-        }
     }
     
     // WHS Meeting functions
@@ -433,48 +639,98 @@ document.addEventListener('DOMContentLoaded', function() {
         return selected;
     }
     
-    // Hazard Identification functions
+    // --- Hazard Identification ---
     function showInspectionResults(area) {
-        const inspectionResults = document.getElementById('inspection-results');
-        const inspectionArea = document.getElementById('inspection-area');
-        const hazardsFound = document.getElementById('hazards-found');
+        const inspectionResultsDiv = document.getElementById('inspection-results');
+        const inspectionAreaSpan = document.getElementById('inspection-area');
+        const hazardsFoundDiv = document.getElementById('hazards-found');
         
-        inspectionResults.classList.remove('hidden');
-        inspectionArea.textContent = formatAreaName(area);
+        // Show the inspection results container and set the area name
+        inspectionResultsDiv.classList.remove('hidden');
+        inspectionAreaSpan.textContent = formatAreaName(area); // formatAreaName is a helper you have
         
-        // Clear previous hazards
-        hazardsFound.innerHTML = '';
+        // Clear out hazards from any previously inspected area displayed in the DOM
+        hazardsFoundDiv.innerHTML = '';
         
-        // Add hazards for the selected area
-        hazardData[area].forEach(hazard => {
-            const hazardDiv = document.createElement('div');
-            hazardDiv.className = 'p-2 bg-white border border-gray-300 rounded flex items-center';
-            hazardDiv.innerHTML = `
-                <input type="checkbox" id="${hazard.id}" class="mr-2 identified-hazard" data-area="${area}" data-description="${hazard.description}">
-                <label for="${hazard.id}">${hazard.description}</label>
-            `;
-            hazardsFound.appendChild(hazardDiv);
-        });
+        const hazIdData = assessmentData.activities.hazardIdentification.data;
+
+        // Check if hazard data exists for the given area
+        if (hazardData[area]) {
+            hazardData[area].forEach(hazard => {
+                // Create a unique ID for the checkbox: "hazard-[areaName]-[originalHazardId]"
+                // e.g., "hazard-chemical-chem1"
+                const checkboxId = `hazard-${area}-${hazard.id}`; 
+
+                const hazardDiv = document.createElement('div');
+                hazardDiv.className = 'p-3 bg-white border border-gray-300 rounded-md flex items-center shadow-sm';
+                
+                // Populate the div with the checkbox and label
+                // Ensure data attributes are correctly set for use in handleHazardCheckboxChange
+                hazardDiv.innerHTML = `
+                    <input type="checkbox" id="${checkboxId}" 
+                            class="mr-3 h-5 w-5 text-rist-orange focus:ring-rist-orange border-gray-400 rounded identified-hazard" 
+                            data-area="${area}" 
+                            data-description="${escapeHtml(hazard.description)}"
+                            data-original-id="${hazard.id}">
+                    <label for="${checkboxId}" class="text-gray-700">${escapeHtml(hazard.description)}</label>
+                `;
+                hazardsFoundDiv.appendChild(hazardDiv);
+
+                // Get the newly added checkbox element
+                const currentCheckbox = document.getElementById(checkboxId);
+
+                // Set its initial checked state based on what's stored in assessmentData
+                // The '!!' converts the value (or undefined) to a boolean
+                currentCheckbox.checked = !!hazIdData.identifiedHazards[checkboxId]; 
+
+                // Remove any existing event listener to prevent duplicates if this function is called multiple times
+                // for the same conceptual area (though typically it's for new areas)
+                currentCheckbox.removeEventListener('change', handleHazardCheckboxChange);
+                // Add the event listener to handle changes to this checkbox
+                currentCheckbox.addEventListener('change', handleHazardCheckboxChange);
+            });
+        } else {
+            // Optional: Display a message if no predefined hazards for this area
+            hazardsFoundDiv.innerHTML = '<p class="text-gray-600 italic">No specific predefined hazards listed for this area. You can add any observed hazards below.</p>';
+        }
         
-        // Save inspection to assessment data
-        if (!assessmentData.activities.hazardIdentification.data.inspections[area]) {
-            assessmentData.activities.hazardIdentification.data.inspections[area] = {
-                inspected: true,
-                timestamp: new Date().toISOString()
+        // Optionally, mark this area as inspected in assessmentData
+        // This could be useful for tracking which areas the student has looked at
+        if (!hazIdData.inspections[area]) {
+            hazIdData.inspections[area] = { 
+                inspected: true, 
+                timestamp: new Date().toISOString() 
             };
         }
         
-        // Add event listeners to checkboxes
-        document.querySelectorAll('.identified-hazard').forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                updateHazardSelect();
-            });
-        });
-        
-        // Update hazard select dropdown
-        updateHazardSelect();
+        // Note: updateHazardSelect() is not called directly here.
+        // It will be called by handleHazardCheckboxChange when a checkbox state actually changes,
+        // or when the entire "hazard-identification" section is first loaded (via updateView).
+        // This ensures the dropdown reflects the accumulated state from assessmentData.
     }
     
+    // Create a dedicated handler function for checkbox changes
+function handleHazardCheckboxChange(event) {
+    const checkbox = event.target;
+    const hazardId = checkbox.id;
+    const hazIdData = assessmentData.activities.hazardIdentification.data;
+
+    if (checkbox.checked) {
+        // Store the full hazard details if you need them later, or just true
+        // Assuming hazardData is globally accessible or passed appropriately
+        const area = checkbox.dataset.area;
+        const description = checkbox.dataset.description;
+        hazIdData.identifiedHazards[hazardId] = {
+            id: hazardId,
+            area: area,
+            description: description
+            // You could add more details from hazardData[area] if needed
+        };
+    } else {
+        delete hazIdData.identifiedHazards[hazardId];
+    }
+    updateHazardSelect(); // Refresh the dropdown
+}
     function formatAreaName(area) {
         switch(area) {
             case 'chemical': return 'Chemical Storage Area';
@@ -487,21 +743,57 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function updateHazardSelect() {
         const hazardSelect = document.getElementById('hazard-select');
-        
-        // Clear current options except the first one
-        while (hazardSelect.options.length > 1) {
-            hazardSelect.remove(1);
+        const instructionText = document.getElementById('hazard-select-instruction'); // Assuming you have this
+        const riskAssessmentForm = document.getElementById('risk-assessment-form');
+        const hazIdData = assessmentData.activities.hazardIdentification.data;
+    
+        const currentSelectedValue = hazardSelect.value; // Preserve current selection if possible
+    
+        hazardSelect.innerHTML = ''; // Clear existing options
+    
+        let placeholderText = "-- Select a Hazard to Assess --";
+        let hazardsAvailable = 0;
+    
+        // Populate from assessmentData.identifiedHazards
+        for (const hazardId in hazIdData.identifiedHazards) {
+            if (hazIdData.identifiedHazards.hasOwnProperty(hazardId)) {
+                const hazardDetails = hazIdData.identifiedHazards[hazardId]; // This should be the object we stored
+                if (hazardDetails && typeof hazardDetails === 'object') { // Ensure it's the object
+                    const option = document.createElement('option');
+                    option.value = hazardDetails.id; // Use the stored ID (e.g., hazard-chemical-chem1)
+                    option.dataset.area = hazardDetails.area;
+                    option.dataset.description = hazardDetails.description;
+                    option.textContent = `${formatAreaName(hazardDetails.area)}: ${escapeHtml(hazardDetails.description)}`;
+                    hazardSelect.appendChild(option);
+                    hazardsAvailable++;
+                }
+            }
         }
+    
+        // Add placeholder
+        const placeholderOption = document.createElement('option');
+        placeholderOption.value = "";
         
-        // Add identified hazards to the select
-        document.querySelectorAll('.identified-hazard:checked').forEach(checkbox => {
-            const option = document.createElement('option');
-            option.value = checkbox.id;
-            option.dataset.area = checkbox.dataset.area;
-            option.dataset.description = checkbox.dataset.description;
-            option.textContent = `${formatAreaName(checkbox.dataset.area)}: ${checkbox.dataset.description}`;
-            hazardSelect.appendChild(option);
-        });
+        if (hazardsAvailable === 0) {
+            placeholderOption.textContent = "-- First, identify hazards by inspecting areas --";
+            hazardSelect.insertBefore(placeholderOption, hazardSelect.firstChild); // Add placeholder at the beginning
+            hazardSelect.value = ""; // Select placeholder
+            hazardSelect.disabled = true;
+            if (instructionText) instructionText.classList.remove('hidden');
+            riskAssessmentForm.classList.add('hidden');
+        } else {
+            placeholderOption.textContent = placeholderText;
+            hazardSelect.insertBefore(placeholderOption, hazardSelect.firstChild); // Add placeholder
+            hazardSelect.disabled = false;
+            if (instructionText) instructionText.classList.add('hidden');
+            
+            // Try to reselect previous value
+            if (Array.from(hazardSelect.options).some(opt => opt.value === currentSelectedValue) && currentSelectedValue !== "") {
+                hazardSelect.value = currentSelectedValue;
+            } else {
+                hazardSelect.value = ""; // Default to placeholder if previous selection is gone or was placeholder
+            }
+        }
     }
     
     function showRiskAssessmentForm(hazardId) {
@@ -705,9 +997,6 @@ document.addEventListener('DOMContentLoaded', function() {
             incorrectCount: incorrectCount
         };
         
-        // Disable response button
-        document.getElementById('respond-btn').disabled = true;
-        document.getElementById('respond-btn').classList.add('opacity-50');
     }
     
     function saveIncidentReport() {
@@ -730,10 +1019,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // Save to assessment data
         assessmentData.activities.emergencyResponse.data.followupActions = followupActions;
         assessmentData.activities.emergencyResponse.data.incidentReport = incidentReport;
-        
-        // Disable submit button
-        document.getElementById('submit-incident-report').disabled = true;
-        document.getElementById('submit-incident-report').classList.add('opacity-50');
     }
     
     // Staff Supervision functions
@@ -781,166 +1066,339 @@ document.addEventListener('DOMContentLoaded', function() {
         return selected ? selected.value : '';
     }
     
-    // Results download function
-    function downloadResults() {
-        // Convert assessment data to CSV format
-        const csvContent = convertToCSV(assessmentData);
-        
-        // Create a blob and download link
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute('href', url);
-        link.setAttribute('download', 'RIST_Assessment_Results.csv');
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
-    
-    function convertToCSV(data) {
-        // Create CSV header
-        let csvRows = [];
-        csvRows.push('RIST Interactive Assessment Results');
-        csvRows.push('');
-        csvRows.push('Assessment Details');
-        csvRows.push(`Start Time,${formatDateTime(data.startTime)}`);
-        csvRows.push(`End Time,${formatDateTime(data.endTime)}`);
-        csvRows.push(`Duration (minutes),${data.startTime && data.endTime ? Math.round((new Date(data.endTime) - new Date(data.startTime)) / 60000) : ""}`);
-        csvRows.push('');
-        
-        // WHS Meeting
-        csvRows.push('WHS MEETING ACTIVITY');
-        csvRows.push(`Completed,${data.activities.whsMeeting.completed ? "Yes" : "No"}`);
-        if (data.activities.whsMeeting.data) {
-            csvRows.push(`Meeting Objective,${escapeCsvValue(data.activities.whsMeeting.data.objective || "")}`);
-            csvRows.push(`Agenda Items,${escapeCsvValue(data.activities.whsMeeting.data.agendaItems ? data.activities.whsMeeting.data.agendaItems.join("; ") : "")}`);
-            csvRows.push(`Required Materials,${escapeCsvValue(data.activities.whsMeeting.data.materials || "")}`);
-            csvRows.push('');
-            csvRows.push('Hazard Approaches');
-            if (data.activities.whsMeeting.data.chemicalHazard) {
-                csvRows.push(`Chemical Hazard Approach,${data.activities.whsMeeting.data.chemicalHazard.approach || ""}`);
-                csvRows.push(`Chemical Action Items,${escapeCsvValue(data.activities.whsMeeting.data.chemicalHazard.actionItems || "")}`);
+    // Inside your DOMContentLoaded listener:
+
+function downloadResults() {
+    const downloadButton = document.getElementById('download-results');
+    const originalButtonText = downloadButton.textContent;
+    downloadButton.textContent = 'Generating PDF...';
+    downloadButton.disabled = true;
+
+    const reportHtml = formatDataForPdf(assessmentData);
+
+    const printWindow = document.createElement('div');
+    printWindow.style.position = 'absolute';
+    printWindow.style.left = '-9999px';
+    printWindow.style.top = '0px';
+    printWindow.style.width = '800px'; // A good rendering width for A4-like content
+    printWindow.style.backgroundColor = '#ffffff';
+    printWindow.innerHTML = reportHtml;
+    document.body.appendChild(printWindow);
+
+    const contentToCapture = printWindow.querySelector('.pdf-wrapper');
+
+    html2canvas(contentToCapture, {
+        scale: 2, // Improves quality
+        useCORS: true,
+        logging: false, // Set to true for debugging html2canvas
+        width: contentToCapture.scrollWidth, // Capture the actual rendered width of the content
+        height: contentToCapture.scrollHeight, // Capture the full scrollable height
+        windowWidth: contentToCapture.scrollWidth, // Important for layout consistency
+        windowHeight: contentToCapture.scrollHeight
+    }).then(canvas => {
+        document.body.removeChild(printWindow);
+
+        const pdf = new jspdf.jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4'
+        });
+
+        const pageMargin = 15; // mm - give more margin
+        const pdfWidth = pdf.internal.pageSize.getWidth() - (2 * pageMargin);
+        const pdfHeight = pdf.internal.pageSize.getHeight() - (2 * pageMargin);
+
+        const canvasWidth = canvas.width;
+        const canvasHeight = canvas.height;
+
+        // Calculate the height of the canvas image when scaled to fit the PDF width
+        const ratio = pdfWidth / canvasWidth;
+        const scaledCanvasHeight = canvasHeight * ratio;
+
+        let yPositionOnCanvas = 0; // Current Y position on the source canvas (in canvas pixels)
+        let pageCount = 0;
+
+        while (yPositionOnCanvas < canvasHeight) {
+            if (pageCount > 0) {
+                pdf.addPage();
             }
-            if (data.activities.whsMeeting.data.equipmentHazard) {
-                csvRows.push(`Equipment Hazard Approach,${data.activities.whsMeeting.data.equipmentHazard.approach || ""}`);
-                csvRows.push(`Equipment Action Items,${escapeCsvValue(data.activities.whsMeeting.data.equipmentHazard.actionItems || "")}`);
+
+            // Calculate the height of the slice to take from the canvas for the current PDF page
+            // This is pdfHeight in PDF units, converted back to canvas pixel units
+            let sliceHeightInCanvasPixels = (pdfHeight / ratio);
+
+            // If the remaining canvas is less than a full slice, take only what's left
+            if (yPositionOnCanvas + sliceHeightInCanvasPixels > canvasHeight) {
+                sliceHeightInCanvasPixels = canvasHeight - yPositionOnCanvas;
             }
-            if (data.activities.whsMeeting.data.ppeHazard) {
-                csvRows.push(`PPE Hazard Approach,${data.activities.whsMeeting.data.ppeHazard.approach || ""}`);
-                csvRows.push(`PPE Action Items,${escapeCsvValue(data.activities.whsMeeting.data.ppeHazard.actionItems || "")}`);
+
+            // Create a temporary canvas to hold the slice
+            const sliceCanvas = document.createElement('canvas');
+            sliceCanvas.width = canvasWidth;
+            sliceCanvas.height = sliceHeightInCanvasPixels;
+            const sliceCtx = sliceCanvas.getContext('2d');
+
+            // Draw the slice from the main canvas to the temporary sliceCanvas
+            // Parameters: sourceImage, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight
+            sliceCtx.drawImage(canvas,
+                0, yPositionOnCanvas, // Source X, Y (from main canvas)
+                canvasWidth, sliceHeightInCanvasPixels, // Source Width, Height (of the slice)
+                0, 0, // Destination X, Y (on sliceCanvas)
+                canvasWidth, sliceHeightInCanvasPixels // Destination Width, Height (on sliceCanvas)
+            );
+
+            const sliceImgData = sliceCanvas.toDataURL('image/png', 1.0); // Use PNG
+
+            // Calculate the height of this slice when added to the PDF
+            const slicePdfHeight = sliceHeightInCanvasPixels * ratio;
+
+            pdf.addImage(sliceImgData, 'PNG', pageMargin, pageMargin, pdfWidth, slicePdfHeight);
+
+            yPositionOnCanvas += sliceHeightInCanvasPixels;
+            pageCount++;
+
+            if (pageCount > 25) { // Safety break for extremely long content
+                console.warn("PDF generation stopped after 25 pages.");
+                break;
             }
-            if (data.activities.whsMeeting.data.firstaidHazard) {
-                csvRows.push(`First Aid Hazard Approach,${data.activities.whsMeeting.data.firstaidHazard.approach || ""}`);
-                csvRows.push(`First Aid Action Items,${escapeCsvValue(data.activities.whsMeeting.data.firstaidHazard.actionItems || "")}`);
-            }
-            csvRows.push('');
-            csvRows.push(`Meeting Summary,${escapeCsvValue(data.activities.whsMeeting.data.summary || "")}`);
-            csvRows.push(`Follow-up Plan,${escapeCsvValue(data.activities.whsMeeting.data.followup || "")}`);
         }
-        csvRows.push('');
+
+        pdf.save(`RIST_Assessment_${escapeHtml(assessmentData.studentName) || 'Results'}.pdf`);
         
-        // Hazard Identification
-        csvRows.push('HAZARD IDENTIFICATION ACTIVITY');
-        csvRows.push(`Completed,${data.activities.hazardIdentification.completed ? "Yes" : "No"}`);
-        csvRows.push(`Areas Inspected,${data.activities.hazardIdentification.data.inspections ? Object.keys(data.activities.hazardIdentification.data.inspections).join(", ") : ""}`);
-        csvRows.push(`Risk Assessments Completed,${data.activities.hazardIdentification.data.riskAssessments ? data.activities.hazardIdentification.data.riskAssessments.length : 0}`);
-        
-        if (data.activities.hazardIdentification.data.riskAssessments && data.activities.hazardIdentification.data.riskAssessments.length > 0) {
-            csvRows.push('');
-            csvRows.push('Risk Assessments');
-            csvRows.push('Area,Hazard,Risk Score,Control Measures,Responsible Person,Due Date');
-            
-            data.activities.hazardIdentification.data.riskAssessments.forEach(assessment => {
-                csvRows.push(`${formatAreaName(assessment.area)},${escapeCsvValue(assessment.description)},${assessment.riskScore},${escapeCsvValue(assessment.controlMeasures.join("; "))},${assessment.responsiblePerson},${assessment.completionDate}`);
+        downloadButton.textContent = originalButtonText;
+        downloadButton.disabled = false;
+        alert('Your PDF report has been generated and downloaded.');
+
+    }).catch(err => {
+        console.error('Error generating PDF:', err);
+        if (document.body.contains(printWindow)) { // Check if printWindow still exists
+            document.body.removeChild(printWindow);
+        }
+        downloadButton.textContent = originalButtonText;
+        downloadButton.disabled = false;
+        alert('An error occurred while generating the PDF. Please check the console for details.');
+    });
+}
+    
+    function formatDateTimeForPdf(dateTimeStr) {
+        if (!dateTimeStr) return 'N/A';
+        try {
+            const date = new Date(dateTimeStr);
+            return date.toLocaleString('en-AU', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
             });
+        } catch (e) {
+            return dateTimeStr; // Fallback
         }
-        csvRows.push('');
-        
-        // Emergency Response
-        csvRows.push('EMERGENCY RESPONSE ACTIVITY');
-        csvRows.push(`Completed,${data.activities.emergencyResponse.completed ? "Yes" : "No"}`);
-        if (data.activities.emergencyResponse.data.immediateResponse) {
-            csvRows.push(`Correct Response Actions,${data.activities.emergencyResponse.data.immediateResponse.correctCount}`);
-            csvRows.push(`Incorrect Response Actions,${data.activities.emergencyResponse.data.immediateResponse.incorrectCount}`);
-            csvRows.push(`Additional Instructions,${escapeCsvValue(data.activities.emergencyResponse.data.immediateResponse.additionalInstructions || "")}`);
-        }
-        
-        if (data.activities.emergencyResponse.data.followupActions) {
-            csvRows.push(`Follow-up Actions Selected,${data.activities.emergencyResponse.data.followupActions.length}`);
-        }
-        
-        if (data.activities.emergencyResponse.data.incidentReport) {
-            csvRows.push('');
-            csvRows.push('Incident Report');
-            const report = data.activities.emergencyResponse.data.incidentReport;
-            csvRows.push(`Date and Time,${report.date || ""}`);
-            csvRows.push(`Location,${escapeCsvValue(report.location || "")}`);
-            csvRows.push(`Description,${escapeCsvValue(report.description || "")}`);
-            csvRows.push(`Persons Involved,${escapeCsvValue(report.personsInvolved || "")}`);
-            csvRows.push(`Injuries/Damage,${escapeCsvValue(report.injuryDescription || "")}`);
-            csvRows.push(`Actions Taken,${escapeCsvValue(report.actionsTaken || "")}`);
-            csvRows.push(`Root Cause,${escapeCsvValue(report.rootCause || "")}`);
-            csvRows.push(`Preventive Measures,${escapeCsvValue(report.preventiveMeasures || "")}`);
-        }
-        csvRows.push('');
-        
-        // Staff Supervision
-        csvRows.push('STAFF SUPERVISION ACTIVITY');
-        csvRows.push(`Completed,${data.activities.staffSupervision.completed ? "Yes" : "No"}`);
-        
-        if (data.activities.staffSupervision.data && data.activities.staffSupervision.data.workPlan) {
-            csvRows.push('');
-            csvRows.push('Work Plan');
-            csvRows.push(`Objectives,${escapeCsvValue(data.activities.staffSupervision.data.workPlan.objectives || "")}`);
-            csvRows.push(`Timeline,${escapeCsvValue(data.activities.staffSupervision.data.workPlan.timeline || "")}`);
-            csvRows.push(`Safety Considerations,${escapeCsvValue(data.activities.staffSupervision.data.workPlan.safetyConsiderations || "")}`);
-            
-            if (data.activities.staffSupervision.data.workPlan.resourceAllocation) {
-                csvRows.push('');
-                csvRows.push('Resource Allocation');
-                const allocation = data.activities.staffSupervision.data.workPlan.resourceAllocation;
-                csvRows.push(`Clearing Debris,${allocation.clearingDebris || "Not assigned"}`);
-                csvRows.push(`Tilling Soil,${allocation.tillingSoil || "Not assigned"}`);
-                csvRows.push(`Applying Fertilizer,${allocation.applyingFertilizer || "Not assigned"}`);
-                csvRows.push(`Setting up Irrigation,${allocation.settingUpIrrigation || "Not assigned"}`);
-            }
-        }
-        
-        if (data.activities.staffSupervision.data && data.activities.staffSupervision.data.teamInstructions) {
-            csvRows.push('');
-            csvRows.push('Team Instructions');
-            csvRows.push(`Communication Method,${data.activities.staffSupervision.data.teamInstructions.communicationMethod || ""}`);
-            csvRows.push(`Key Points,${escapeCsvValue(data.activities.staffSupervision.data.teamInstructions.keyPoints || "")}`);
-        }
-        
-        if (data.activities.staffSupervision.data && data.activities.staffSupervision.data.performanceIssue) {
-            csvRows.push('');
-            csvRows.push('Performance Issue');
-            csvRows.push(`Approach,${data.activities.staffSupervision.data.performanceIssue.approach || ""}`);
-            csvRows.push(`Response,${data.activities.staffSupervision.data.performanceIssue.response || ""}`);
-        }
-        
-        if (data.activities.staffSupervision.data && data.activities.staffSupervision.data.feedback) {
-            csvRows.push('');
-            csvRows.push('Feedback');
-            csvRows.push(`Positive Feedback,${escapeCsvValue(data.activities.staffSupervision.data.feedback.positive || "")}`);
-            csvRows.push(`Areas for Improvement,${escapeCsvValue(data.activities.staffSupervision.data.feedback.improvement || "")}`);
-            csvRows.push(`Action Plan,${escapeCsvValue(data.activities.staffSupervision.data.feedback.actionPlan || "")}`);
-            csvRows.push(`Follow-up Plan,${escapeCsvValue(data.activities.staffSupervision.data.feedback.followUp || "")}`);
-        }
-        
-        return csvRows.join('\n');
     }
     
-    function escapeCsvValue(value) {
-        if (!value) return '';
-        // If the value contains a comma, quote, or newline, wrap it in quotes
-        if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-            // Replace any double quotes with two double quotes
-            return `"${value.replace(/"/g, '""')}"`;
+    function formatDataForPdf(data) {
+        let html = `${pdfStyles}<div class="pdf-wrapper">`;
+        html += `<h1 class="pdf-main-header">RIST Assessment Results</h1>`;
+    
+        // Student Information (remains similar)
+        html += `<div class="pdf-section student-info-block">`;
+        html += `<h2 class="pdf-section-title">Student Information</h2>`;
+        html += `<p class="pdf-item"><span class="pdf-item-label">Name:</span> <span class="pdf-item-value">${escapeHtml(data.studentName) || 'N/A'}</span></p>`;
+        html += `<p class="pdf-item"><span class="pdf-item-label">Unit Code:</span> <span class="pdf-item-value">${escapeHtml(data.unitCode) || 'N/A'}</span></p>`;
+        html += `<p class="pdf-item"><span class="pdf-item-label">Assessment Started:</span> <span class="pdf-item-value">${formatDateTimeForPdf(data.startTime)}</span></p>`;
+        html += `<p class="pdf-item"><span class="pdf-item-label">Assessment Ended:</span> <span class="pdf-item-value">${formatDateTimeForPdf(data.endTime)}</span></p>`;
+        if (data.startTime && data.endTime) {
+            const duration = Math.round((new Date(data.endTime) - new Date(data.startTime)) / 60000);
+            html += `<p class="pdf-item"><span class="pdf-item-label">Duration:</span> <span class="pdf-item-value">${duration} minutes</span></p>`;
         }
-        return value;
+        html += `</div>`;
+    
+        // --- Helper functions defined INSIDE formatDataForPdf ---
+        const addQA = (questionKey, answerValue, sectionName = 'whsMeeting') => {
+            const qText = getQuestionText(sectionName, questionKey);
+            let blockHtml = `<div class="pdf-qa-block">`;
+            if (qText) {
+                blockHtml += `<span class="pdf-question-text">${escapeHtml(qText)}</span>`;
+            }
+            blockHtml += `<div class="pdf-answer-wrapper">`;
+            blockHtml += `<span class="pdf-answer-label">Student's Answer:</span>`;
+            blockHtml += `<span class="pdf-answer-text">${escapeHtml(answerValue) || 'N/A'}</span>`;
+            blockHtml += `</div></div>`;
+            html += blockHtml; // Append to the main html string
+        };
+        
+        const addQAList = (questionKey, answerArray, sectionName = 'whsMeeting') => {
+            const qText = getQuestionText(sectionName, questionKey);
+            let blockHtml = `<div class="pdf-qa-block">`;
+            if (qText) {
+                blockHtml += `<span class="pdf-question-text">${escapeHtml(qText)}</span>`;
+            }
+            blockHtml += `<div class="pdf-answer-wrapper">`;
+            blockHtml += `<span class="pdf-answer-label">Student's Answers:</span>`;
+            if (answerArray && answerArray.length > 0) {
+                blockHtml += `<ul class="pdf-answer-list">`;
+                answerArray.forEach(item => {
+                    blockHtml += `<li class="pdf-answer-list-item">${escapeHtml(item)}</li>`;
+                });
+                blockHtml += `</ul>`;
+            } else {
+                blockHtml += `<span class="pdf-answer-text">N/A</span>`;
+            }
+            blockHtml += `</div></div>`;
+            html += blockHtml; // Append to the main html string
+        };
+        // --- End of helper functions ---
+    
+    
+        // --- WHS Meeting ---
+        if (data.activities.whsMeeting && data.activities.whsMeeting.completed) {
+            const whs = data.activities.whsMeeting.data;
+            html += `<div class="pdf-section">`;
+            html += `<h2 class="pdf-section-title">WHS Meeting Activity</h2>`;
+    
+            addQA('objective', whs.objective); // Now addQA is in scope
+            addQAList('agendaItems', whs.agendaItems);
+            addQA('materials', whs.materials);
+            
+            html += `<h3 class="pdf-subsection-title">Hazard Approaches:</h3>`;
+            const hazards = [
+                { key: 'chemicalHazard', approachKey: 'chemicalHazardApproach', actionKey: 'chemicalHazardActionItems', name: 'Chemical Storage Area' },
+                { key: 'equipmentHazard', approachKey: 'equipmentHazardApproach', actionKey: 'equipmentHazardActionItems', name: 'Equipment Shed' },
+                { key: 'ppeHazard', approachKey: 'ppeHazardApproach', actionKey: 'ppeHazardActionItems', name: 'Field Operations PPE' },
+                { key: 'firstaidHazard', approachKey: 'firstaidHazardApproach', actionKey: 'firstaidHazardActionItems', name: 'First Aid and Emergency Contact' }
+            ];
+    
+            hazards.forEach(hazInfo => {
+                if (whs[hazInfo.key]) {
+                    html += `<div class="activity-block">`;
+                    html += `<h4 style="margin-top:0; margin-bottom: 10px; color: #1E3F61;">${escapeHtml(hazInfo.name)}:</h4>`;
+                    addQA(hazInfo.approachKey, whs[hazInfo.key].approach);
+                    addQA(hazInfo.actionKey, whs[hazInfo.key].actionItems);
+                    html += `</div>`;
+                }
+            });
+    
+            html += `<div style="margin-top:15px;">`;
+            addQA('summary', whs.summary);
+            addQA('followup', whs.followup);
+            html += `</div>`;
+            html += `</div>`; // End WHS Section
+        }
+    
+        // --- Hazard Identification ---
+        if (data.activities.hazardIdentification && data.activities.hazardIdentification.completed) {
+            const hazId = data.activities.hazardIdentification.data;
+            html += `<div class="pdf-section">`;
+            html += `<h2 class="pdf-section-title">Hazard Identification Activity</h2>`;
+            const inspectedAreas = hazId.inspections ? Object.keys(hazId.inspections).map(area => formatAreaName(area)).join(', ') : 'None';
+            
+            // Using a direct HTML structure here as it's not a standard Q&A
+            html += `<div class="pdf-qa-block"><span class="pdf-question-text">Areas Inspected by Student:</span><div class="pdf-answer-wrapper"><span class="pdf-answer-text">${escapeHtml(inspectedAreas)}</span></div></div>`;
+            
+            if (hazId.riskAssessments && hazId.riskAssessments.length > 0) {
+                html += `<h3 class="pdf-subsection-title">Risk Assessments Conducted:</h3>`;
+                html += `<table class="pdf-table"><thead><tr><th>Hazard Description</th><th>Area</th><th>Likelihood</th><th>Consequence</th><th>Risk Score</th><th>Control Measures</th><th>Control Details</th><th>Responsible</th><th>Due Date</th></tr></thead><tbody>`;
+                hazId.riskAssessments.forEach(ra => {
+                    html += `<tr>`;
+                    html += `<td>${escapeHtml(ra.description)}</td>`;
+                    html += `<td>${escapeHtml(formatAreaName(ra.area))}</td>`;
+                    html += `<td>${escapeHtml(ra.likelihood)}</td>`;
+                    html += `<td>${escapeHtml(ra.consequence)}</td>`;
+                    html += `<td>${escapeHtml(ra.riskScore)}</td>`;
+                    html += `<td>${(ra.controlMeasures && ra.controlMeasures.length > 0) ? escapeHtml(ra.controlMeasures.join('; ')) : 'N/A'}</td>`;
+                    html += `<td>${escapeHtml(ra.controlDetails) || 'N/A'}</td>`;
+                    html += `<td>${escapeHtml(ra.responsiblePerson)}</td>`;
+                    html += `<td>${escapeHtml(ra.completionDate)}</td>`;
+                    html += `</tr>`;
+                });
+                html += `</tbody></table>`;
+            } else {
+                html += `<p class="pdf-item">No risk assessments completed.</p>`;
+            }
+            html += `</div>`;
+        }
+    
+        // --- Emergency Response ---
+        if (data.activities.emergencyResponse && data.activities.emergencyResponse.completed) {
+            const er = data.activities.emergencyResponse.data;
+            html += `<div class="pdf-section">`;
+            html += `<h2 class="pdf-section-title">Emergency Response Activity</h2>`;
+            if (er.immediateResponse) {
+                html += `<h3 class="pdf-subsection-title">Immediate Response:</h3>`;
+                addQA('immediateResponseSelectedActions', er.immediateResponse.selectedActions ? er.immediateResponse.selectedActions.join(', ') : 'N/A', 'emergencyResponse');
+                addQA('immediateResponseAdditionalInstructions', er.immediateResponse.additionalInstructions, 'emergencyResponse');
+            }
+            if (er.incidentReport) {
+                html += `<h3 class="pdf-subsection-title" style="margin-top:15px;">Incident Report Filed:</h3>`;
+                const report = er.incidentReport;
+                html += `<div class="activity-block" style="background-color: #f9f9f9; border-color: #e0e0e0;">`;
+                for (const key in report) {
+                    const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                    html += `<div class="pdf-qa-block" style="border:none; padding: 5px 0; background-color:transparent;">`;
+                    html += `<span class="pdf-question-text" style="color:#555;">${escapeHtml(label)}:</span>`;
+                    html += `<div class="pdf-answer-wrapper"><span class="pdf-answer-text">${escapeHtml(report[key]) || 'N/A'}</span></div>`;
+                    html += `</div>`;
+                }
+                html += `</div>`;
+            }
+            html += `</div>`;
+        }
+    
+        // --- Staff Supervision ---
+        if (data.activities.staffSupervision && data.activities.staffSupervision.completed) {
+            const sup = data.activities.staffSupervision.data;
+            html += `<div class="pdf-section">`;
+            html += `<h2 class="pdf-section-title">Staff Supervision Activity</h2>`;
+            
+            // Define addSupQA specific to this section if needed, or just use addQA with 'staffSupervision'
+            const addSupQA = (questionKey, answerValue) => {
+                addQA(questionKey, answerValue, 'staffSupervision');
+            };
+                
+            if (sup.workPlan) {
+                html += `<h3 class="pdf-subsection-title">Work Plan:</h3>`;
+                addSupQA('workPlanObjectives', sup.workPlan.objectives);
+                
+                html += `<div class="pdf-qa-block">`;
+                html += `<span class="pdf-question-text">Work Plan Resource Allocation:</span>`; // This is the "Question" for the block
+                html += `<div class="pdf-answer-wrapper">`;
+                if (sup.workPlan.resourceAllocation) {
+                    const ra = sup.workPlan.resourceAllocation;
+                    // For each item in resource allocation, we can treat the sub-item as a label
+                    html += `<p class="pdf-item" style="margin-bottom:3px;"><span class="pdf-answer-label" style="min-width:120px;">Clearing Debris:</span> <span class="pdf-answer-text">${escapeHtml(ra.clearingDebris) || 'N/A'}</span></p>`;
+                    html += `<p class="pdf-item" style="margin-bottom:3px;"><span class="pdf-answer-label" style="min-width:120px;">Tilling Soil:</span> <span class="pdf-answer-text">${escapeHtml(ra.tillingSoil) || 'N/A'}</span></p>`;
+                    html += `<p class="pdf-item" style="margin-bottom:3px;"><span class="pdf-answer-label" style="min-width:120px;">Applying Fertilizer:</span> <span class="pdf-answer-text">${escapeHtml(ra.applyingFertilizer) || 'N/A'}</span></p>`;
+                    html += `<p class="pdf-item"><span class="pdf-answer-label" style="min-width:120px;">Setting up Irrigation:</span> <span class="pdf-answer-text">${escapeHtml(ra.settingUpIrrigation) || 'N/A'}</span></p>`;
+                } else { html += `<span class="pdf-answer-text">N/A</span>`; }
+                html += `</div></div>`;
+    
+                addSupQA('workPlanTimeline', sup.workPlan.timeline);
+                addSupQA('workPlanSafetyConsiderations', sup.workPlan.safetyConsiderations);
+            }
+            if (sup.teamInstructions) {
+                html += `<h3 class="pdf-subsection-title">Team Instructions:</h3>`;
+                addSupQA('teamInstructionsCommunicationMethod', sup.teamInstructions.communicationMethod);
+                addSupQA('teamInstructionsKeyPoints', sup.teamInstructions.keyPoints);
+            }
+            if (sup.performanceIssue) {
+                html += `<h3 class="pdf-subsection-title">Performance Issue:</h3>`;
+                addSupQA('performanceIssueApproach', sup.performanceIssue.approach);
+                addSupQA('performanceIssueResponse', sup.performanceIssue.response);
+            }
+            if (sup.feedback) {
+                html += `<h3 class="pdf-subsection-title">Feedback Provided:</h3>`;
+                addSupQA('feedbackPositive', sup.feedback.positive);
+                addSupQA('feedbackImprovement', sup.feedback.improvement);
+                addSupQA('feedbackActionPlan', sup.feedback.actionPlan);
+                addSupQA('feedbackFollowUp', sup.feedback.followUp);
+            }
+            html += `</div>`;
+        }
+    
+        html += `<p class="pdf-footer-note">End of Report - Generated on ${new Date().toLocaleDateString('en-AU')}</p>`;
+        html += `</div>`; // Close pdf-wrapper
+        return html;
     }
     
     function formatDateTime(dateTimeStr) {
@@ -981,6 +1439,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Call once on load and add resize listener
     adjustButtonsForMobile();
     window.addEventListener('resize', adjustButtonsForMobile);
+    improveDropdownDisplay();
 });
 
 function improveDropdownDisplay() {
@@ -1006,12 +1465,5 @@ function improveDropdownDisplay() {
             this.style.width = '100%';
         });
     });
-}
 
-// Call this function after the DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
-    // ... existing code ...
-    
-    // Add this at the end
-    improveDropdownDisplay();
-});
+}
